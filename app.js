@@ -3,12 +3,67 @@ const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
+const DEFAULT_NANO_MODEL = "gemini-3-pro-image-preview";
 const GPT54_MODEL = "gpt-5.4";
 
 const RESPONSES_IMAGE_MODELS = new Set([GPT54_MODEL]);
 
+const GEMINI_IMAGE_MODELS = new Set([
+  "gemini-3-pro-image-preview",
+  "gemini-2.5-flash-image",
+]);
+
+const CHAT_COMPLETIONS_IMAGE_MODELS = new Set([
+  "gemini-3-pro-image-preview",
+  "gemini-2.5-flash-image",
+]);
+
+const MODEL_FAMILY_DEFAULTS = {
+  nano: DEFAULT_NANO_MODEL,
+  gpt: DEFAULT_IMAGE_MODEL,
+  flux: "",
+};
+
+const MODEL_META = {
+  "gemini-3-pro-image-preview": {
+    family: "nano",
+    title: "gemini-3-pro-image-preview",
+    description: "Gemini 3 Pro 图片预览模型，适合更高质量的图像生成。",
+  },
+
+  "gemini-2.5-flash-image": {
+    family: "nano",
+    title: "gemini-2.5-flash-image",
+    description: "Gemini 2.5 Flash 图片模型，速度更快，适合快速出图。",
+  },
+
+  "gpt-image-2": {
+    family: "gpt",
+    title: "gpt-image-2",
+    description: "标准图片生成，沿用 Image API 参数体系。",
+  },
+
+  "gpt-image-1": {
+    family: "gpt",
+    title: "gpt-image-1",
+    description: "OpenAI 图片生成模型。",
+  },
+
+  "dall-e-3": {
+    family: "gpt",
+    title: "dall-e-3",
+    description: "DALL·E 3 图片生成模型。",
+  },
+
+  "gpt-5.4": {
+    family: "gpt",
+    title: "gpt-5.4",
+    description: "使用 gpt-5.4 模型生成图片，基于 Responses API。",
+  },
+};
+
 // gpt-5.4 模型不显示/不允许这些尺寸。
-// 用户之前说的 2024*2048，HTML 里实际是 2048x2048，这里按 2048x2048 处理。
+// 如果你已经从 UI 删除尺寸控件，这里仍然作为防御性兜底保留。
 const GPT54_DISABLED_SIZES = new Set([
   "1024x1024",
   "2048x2048",
@@ -16,6 +71,7 @@ const GPT54_DISABLED_SIZES = new Set([
 ]);
 
 // gpt-5.4 只允许 PNG。
+// 如果你已经从 UI 删除输出格式控件，这里仍然作为防御性兜底保留。
 const GPT54_ALLOWED_FORMATS = new Set(["png"]);
 
 // Responses API 图片生成可能会先返回 generating 状态，这里做轮询。
@@ -37,6 +93,7 @@ const countInput = $("#count");
 const generateBtn = $("#generateBtn");
 
 const currentModelText = $("#currentModelText");
+const currentModelDesc = $("#currentModelDesc");
 const modelBadge = $("#modelBadge");
 const statusText = $("#statusText");
 const apiModeBadge = $("#apiModeBadge");
@@ -47,7 +104,7 @@ const debugBox = $("#debugBox");
 const themeBtn = $("#themeBtn");
 
 // 生成中提示框相关 DOM。
-// 如果 index.html 暂时没加这些节点，下面变量会是 null，不会报错，只是不显示提示框。
+// 如果 index.html 暂时没加这些节点，不会报错，只是不显示提示框。
 const generationNotice = $("#generationNotice");
 const generationNoticeIcon = $("#generationNoticeIcon");
 const generationNoticeTitle = $("#generationNoticeTitle");
@@ -60,8 +117,7 @@ let generationStartTime = 0;
 let generationTimerId = null;
 
 // 缓存原始尺寸选项，用于模型切换时恢复。
-// 如果 index.html 中 option 写了 data-hide-for="gpt-5.4"，这里会读取。
-// 即使 HTML 没写 data-hide-for，后面也会通过 GPT54_DISABLED_SIZES 做兜底。
+// 如果你已经从 UI 删除尺寸控件，这里会是空数组，不影响运行。
 const ORIGINAL_SIZE_OPTIONS = sizeSelect
   ? Array.from(sizeSelect.options).map((option) => ({
       value: option.value,
@@ -72,8 +128,7 @@ const ORIGINAL_SIZE_OPTIONS = sizeSelect
   : [];
 
 // 缓存原始输出格式选项，用于模型切换时恢复。
-// 如果 index.html 中 label.radio 写了 data-hide-for="gpt-5.4"，这里会读取。
-// 即使 HTML 没写 data-hide-for，后面也会通过 GPT54_ALLOWED_FORMATS 做兜底。
+// 如果你已经从 UI 删除格式控件，这里会是空数组，不影响运行。
 const formatFieldRow = document
   .querySelector('input[name="format"]')
   ?.closest(".field-row");
@@ -142,6 +197,13 @@ function bindEvents() {
     });
   }
 
+  $$(".model-tabs button").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const family = tab.dataset.family || inferFamilyFromTabText(tab.textContent);
+      setModelFamily(family);
+    });
+  });
+
   $$(".model-card").forEach((card) => {
     card.addEventListener("click", () => {
       const model = normalizeModelName(card.dataset.model);
@@ -187,6 +249,13 @@ function normalizeModelDom() {
         option.value = "gpt-5.4";
         option.textContent = "gpt-5.4";
       }
+
+      const model = normalizeModelName(option.value);
+      const meta = getModelMeta(model);
+
+      if (!option.dataset.family) {
+        option.dataset.family = meta.family || "gpt";
+      }
     });
   }
 
@@ -194,7 +263,36 @@ function normalizeModelDom() {
     if (card.dataset.model === "gpt-5.4-image") {
       card.dataset.model = "gpt-5.4";
     }
+
+    const model = normalizeModelName(card.dataset.model);
+    const meta = getModelMeta(model);
+
+    if (!card.dataset.family) {
+      card.dataset.family = meta.family || "gpt";
+    }
   });
+
+  $$(".model-tabs button").forEach((tab) => {
+    if (!tab.dataset.family) {
+      tab.dataset.family = inferFamilyFromTabText(tab.textContent);
+    }
+
+    tab.type = "button";
+  });
+}
+
+function inferFamilyFromTabText(text) {
+  const value = String(text || "").toLowerCase();
+
+  if (value.includes("nano") || value.includes("banana") || value.includes("gemini")) {
+    return "nano";
+  }
+
+  if (value.includes("flux")) {
+    return "flux";
+  }
+
+  return "gpt";
 }
 
 function normalizeModelName(model) {
@@ -207,17 +305,94 @@ function normalizeModelName(model) {
   return value;
 }
 
+function getModelMeta(model) {
+  model = normalizeModelName(model);
+
+  return (
+    MODEL_META[model] || {
+      family: "gpt",
+      title: model,
+      description: "当前模型。",
+    }
+  );
+}
+
+function getModelFamily(model) {
+  return getModelMeta(model).family || "gpt";
+}
+
+function setModelFamily(family) {
+  if (!family) return;
+
+  if (family === "flux") {
+    setStatus("Flux 分组暂未接入模型。", "warning");
+    return;
+  }
+
+  const currentModel = normalizeModelName(
+    modelSelect?.value || DEFAULT_IMAGE_MODEL
+  );
+
+  if (getModelFamily(currentModel) === family) {
+    applyModelFamilyUi(family, currentModel);
+    return;
+  }
+
+  const nextModel = MODEL_FAMILY_DEFAULTS[family];
+
+  if (!nextModel) {
+    setStatus("当前分组暂未配置默认模型。", "warning");
+    return;
+  }
+
+  setModel(nextModel);
+}
+
+function applyModelFamilyUi(family, activeModel) {
+  family = family || getModelFamily(activeModel);
+  activeModel = normalizeModelName(activeModel);
+
+  $$(".model-tabs button").forEach((tab) => {
+    const tabFamily = tab.dataset.family || inferFamilyFromTabText(tab.textContent);
+    tab.classList.toggle("active", tabFamily === family);
+  });
+
+  if (modelSelect) {
+    Array.from(modelSelect.options).forEach((option) => {
+      const optionModel = normalizeModelName(option.value);
+      const optionFamily = option.dataset.family || getModelFamily(optionModel);
+      const shouldShow = optionFamily === family;
+
+      option.hidden = !shouldShow;
+      option.disabled = !shouldShow;
+    });
+  }
+
+  $$(".model-card").forEach((card) => {
+    const cardModel = normalizeModelName(card.dataset.model);
+    const cardFamily = card.dataset.family || getModelFamily(cardModel);
+    const shouldShow = cardFamily === family;
+
+    card.hidden = !shouldShow;
+    card.classList.toggle("active", shouldShow && cardModel === activeModel);
+  });
+}
+
 function ensureModelOption(model) {
   if (!modelSelect || !model) return;
 
   const exists = Array.from(modelSelect.options).some(
-    (option) => option.value === model
+    (option) => normalizeModelName(option.value) === model
   );
 
   if (!exists) {
+    const meta = getModelMeta(model);
+
     const option = document.createElement("option");
     option.value = model;
-    option.textContent = model;
+    option.textContent = meta.title || model;
+    option.dataset.family = meta.family || "gpt";
+
     modelSelect.appendChild(option);
   }
 }
@@ -231,22 +406,26 @@ function setModel(model) {
 
   ensureModelOption(model);
 
+  const meta = getModelMeta(model);
+  const family = meta.family || "gpt";
+
+  applyModelFamilyUi(family, model);
+
   if (modelSelect) {
     modelSelect.value = model;
   }
 
   if (currentModelText) {
-    currentModelText.textContent = model;
+    currentModelText.textContent = meta.title || model;
+  }
+
+  if (currentModelDesc) {
+    currentModelDesc.textContent = meta.description || "";
   }
 
   if (modelBadge) {
     modelBadge.textContent = model;
   }
-
-  $$(".model-card").forEach((card) => {
-    const cardModel = normalizeModelName(card.dataset.model);
-    card.classList.toggle("active", cardModel === model);
-  });
 
   applyModelUiRestrictions(model);
 
@@ -257,6 +436,10 @@ function setModel(model) {
 
 function getEndpointForModel(model) {
   model = normalizeModelName(model);
+
+  if (CHAT_COMPLETIONS_IMAGE_MODELS.has(model)) {
+    return `${FIXED_API_BASE}/v1/chat/completions`;
+  }
 
   if (RESPONSES_IMAGE_MODELS.has(model)) {
     return `${FIXED_API_BASE}/v1/responses`;
@@ -397,7 +580,7 @@ async function handleGenerate(event) {
   const prompt = promptInput?.value.trim() || "";
   const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
 
-  // 这些参数已从 UI 中移除。
+  // 这些参数已经从 UI 中移除。
   // 如果需要控制尺寸、质量、背景、风格，请直接写进 Prompt。
   // 默认不主动提交 size / quality / background。
   let size = "auto";
@@ -405,7 +588,7 @@ async function handleGenerate(event) {
   const background = "auto";
 
   // 输出格式不再暴露给 UI。
-  // 普通图片模型默认不额外提交格式；gpt-5.4 会在后面兜底固定为 png。
+  // 普通图片模型默认不额外提交格式；gpt-5.4 会兜底固定为 png。
   let format = "png";
 
   // 生成数量已从 UI 移除，默认每次生成 1 张。
@@ -425,8 +608,6 @@ async function handleGenerate(event) {
       format = "png";
     }
   }
-
-  console.log("页面读取到的质量 quality =", quality);
 
   if (!prompt) {
     setStatus("请先输入 Prompt。", "warning");
@@ -498,7 +679,6 @@ async function handleGenerate(event) {
       error.message || "生成失败，请查看控制台或下方调试信息。"
     );
 
-    // setStatus(error.message || "生成失败，请查看控制台。", "error");
     setStatus("图片生成失败，请查看下方提示和调试信息。", "error");
 
     showDebug(
@@ -529,6 +709,16 @@ async function callImageGenerationApi({
   count,
 }) {
   model = normalizeModelName(model);
+
+  if (GEMINI_IMAGE_MODELS.has(model)) {
+    return await callGeminiImageApi({
+      baseURL,
+      key,
+      model,
+      prompt,
+      count,
+    });
+  }
 
   if (RESPONSES_IMAGE_MODELS.has(model)) {
     return await callResponsesImageApi({
@@ -583,7 +773,7 @@ async function callImagesGenerationsApi({
   if (background && background !== "auto") payload.background = background;
 
   // 对 gpt-image 系列通常是 output_format。
-  // 如果你的中转站只接受 response_format，可以按实际情况改回 response_format。
+  // 现在 UI 已经移除输出格式，默认 format=png 时不提交。
   if (format && format !== "png") payload.output_format = format;
 
   console.log("Images API 请求参数：", payload);
@@ -642,6 +832,106 @@ async function callImagesGenerationsApi({
       response: raw,
       extracted_images_count: images.length,
     },
+  };
+}
+
+async function callGeminiImageApi({
+  baseURL,
+  key,
+  model,
+  prompt,
+  count,
+}) {
+  const url = `${baseURL}/v1/chat/completions`;
+
+  console.log("准备请求 Gemini / Nano Banana 图片 API：", url);
+
+  const images = [];
+  const debugItems = [];
+
+  for (let i = 0; i < count; i++) {
+    const payload = {
+      model,
+
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+
+      // Gemini 图片模型通常需要声明希望返回 text + image。
+      // 如果你的中转站不支持 modalities，返回 400 时可以删除这一行。
+      modalities: ["text", "image"],
+
+      stream: false,
+    };
+
+    console.log(`Gemini 图片请求参数 #${i + 1}：`, payload);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const raw = await safeJson(response);
+
+    if (!response.ok) {
+      const error = new Error(
+        buildApiErrorMessage(raw, response, "Gemini 图片 API")
+      );
+
+      error.raw = {
+        request_url: url,
+        request_payload: payload,
+        response: raw,
+        tip: "如果返回 400，可能是中转站不支持 modalities 字段，可以先删除 payload.modalities 再试。",
+      };
+
+      throw error;
+    }
+
+    console.log("Gemini 图片 API 返回：", raw);
+
+    const currentImages = extractImagesFromAnyResponse(raw);
+
+    if (!currentImages.length) {
+      const outputText = extractTextFromAnyResponse(raw);
+
+      const error = new Error(
+        outputText
+          ? `Gemini 模型没有生成图片，而是返回了文字：${outputText}`
+          : "Gemini 图片 API 返回成功，但没有找到图片数据。"
+      );
+
+      error.raw = {
+        request_url: url,
+        request_payload: payload,
+        response: raw,
+        output_text: outputText || undefined,
+        tip: "请查看 response 结构。如果图片在 inline_data / inlineData / image_url / b64_json 等字段里，可以继续扩展提取逻辑。",
+      };
+
+      throw error;
+    }
+
+    images.push(...currentImages);
+
+    debugItems.push({
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+      extracted_images_count: currentImages.length,
+    });
+  }
+
+  return {
+    images: images.slice(0, count),
+    raw: count === 1 ? debugItems[0] : debugItems,
   };
 }
 
@@ -946,6 +1236,63 @@ function extractOutputTextFromResponses(raw) {
   return texts.join("\n\n").trim();
 }
 
+function extractImagesFromAnyResponse(raw) {
+  return extractImagesFromResponses(raw);
+}
+
+function extractTextFromAnyResponse(raw) {
+  const texts = [];
+
+  const responsesText = extractOutputTextFromResponses(raw);
+  if (responsesText) {
+    texts.push(responsesText);
+  }
+
+  if (Array.isArray(raw?.choices)) {
+    raw.choices.forEach((choice) => {
+      const message = choice?.message;
+
+      if (!message) return;
+
+      if (typeof message.content === "string") {
+        texts.push(message.content);
+      }
+
+      if (Array.isArray(message.content)) {
+        message.content.forEach((item) => {
+          if (typeof item === "string") {
+            texts.push(item);
+          }
+
+          if (item?.type === "text" && item.text) {
+            texts.push(item.text);
+          }
+
+          if (item?.text) {
+            texts.push(item.text);
+          }
+        });
+      }
+    });
+  }
+
+  if (Array.isArray(raw?.candidates)) {
+    raw.candidates.forEach((candidate) => {
+      const parts = candidate?.content?.parts;
+
+      if (Array.isArray(parts)) {
+        parts.forEach((part) => {
+          if (part?.text) {
+            texts.push(part.text);
+          }
+        });
+      }
+    });
+  }
+
+  return texts.join("\n\n").trim();
+}
+
 function extractImagesFromResponses(raw) {
   const images = [];
   const visited = new WeakSet();
@@ -966,12 +1313,17 @@ function extractImagesFromResponses(raw) {
     }
   };
 
-  const pushBase64Image = (value, format = "png") => {
+  const pushBase64Image = (value, format = "png", force = false) => {
     if (!value) return;
 
     const cleaned = String(value).replace(/\s/g, "");
 
-    if (!looksLikeBase64Image(cleaned)) return;
+    if (force) {
+      if (cleaned.length < 50) return;
+      if (!/^[A-Za-z0-9+/=_-]+$/.test(cleaned)) return;
+    } else {
+      if (!looksLikeBase64Image(cleaned)) return;
+    }
 
     const imageFormat = normalizeImageFormat(format);
     images.push(`data:image/${imageFormat};base64,${cleaned}`);
@@ -1047,11 +1399,13 @@ function extractImagesFromResponses(raw) {
           value.output_format ||
           value.outputFormat ||
           value.format ||
+          mimeTypeToImageFormat(value.mime_type || value.mimeType) ||
           context.output_format ||
           context.format ||
           "png",
       };
 
+      // 常见图片 URL 字段。
       if (value.url) {
         pushDisplayableImage(value.url);
       }
@@ -1064,6 +1418,7 @@ function extractImagesFromResponses(raw) {
         }
       }
 
+      // 常见 base64 字段。
       if (value.b64_json) {
         pushBase64Image(value.b64_json, localContext.output_format);
       }
@@ -1076,6 +1431,39 @@ function extractImagesFromResponses(raw) {
         pushBase64Image(value.base64, localContext.output_format);
       }
 
+      // Gemini / Google 常见 inline image 字段：inlineData / inline_data。
+      if (value.inlineData?.data) {
+        pushBase64Image(
+          value.inlineData.data,
+          mimeTypeToImageFormat(value.inlineData.mimeType) ||
+            localContext.output_format,
+          true
+        );
+      }
+
+      if (value.inline_data?.data) {
+        pushBase64Image(
+          value.inline_data.data,
+          mimeTypeToImageFormat(value.inline_data.mime_type) ||
+            localContext.output_format,
+          true
+        );
+      }
+
+      // 某些兼容接口可能会用 data + mime_type 存放图片。
+      if (
+        value.data &&
+        (String(value.mime_type || value.mimeType || "").startsWith("image/"))
+      ) {
+        pushBase64Image(
+          value.data,
+          mimeTypeToImageFormat(value.mime_type || value.mimeType) ||
+            localContext.output_format,
+          true
+        );
+      }
+
+      // Responses API image_generation_call 常见 result 字段。
       if (value.result) {
         if (typeof value.result === "string") {
           if (
@@ -1134,6 +1522,18 @@ function normalizeImageFormat(format) {
   if (value === "png") return "png";
 
   return "png";
+}
+
+function mimeTypeToImageFormat(mimeType) {
+  const value = String(mimeType || "").toLowerCase();
+
+  if (value.includes("image/png")) return "png";
+  if (value.includes("image/jpeg")) return "jpeg";
+  if (value.includes("image/jpg")) return "jpeg";
+  if (value.includes("image/webp")) return "webp";
+  if (value.includes("image/gif")) return "gif";
+
+  return "";
 }
 
 function buildApiErrorMessage(raw, response, apiName) {
@@ -1281,7 +1681,8 @@ function redactLargeImageData(value, seen = new WeakSet()) {
       if (
         lowerKey.includes("b64") ||
         lowerKey.includes("base64") ||
-        lowerKey === "result"
+        lowerKey === "result" ||
+        lowerKey === "data"
       ) {
         if (typeof child === "string" && child.length > 100) {
           output[key] = redactLargeImageData(child, seen);
@@ -1345,6 +1746,7 @@ function startGenerationIndicator(model) {
 
   updateGenerationTimer();
 
+  // 50ms 刷新一次，配合 formatElapsedTime 显示两位小数。
   generationTimerId = setInterval(updateGenerationTimer, 50);
 }
 

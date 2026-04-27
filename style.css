@@ -1901,3 +1901,8 @@ textarea {
     font-size: 38px !important;
   }
 }
+
+/* 隐藏当前模型分组之外的模型卡片 */
+.model-card[hidden] {
+  display: none !important;
+}
