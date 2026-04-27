@@ -1342,7 +1342,7 @@ function startGenerationIndicator(model) {
 
   updateGenerationTimer();
 
-  generationTimerId = setInterval(updateGenerationTimer, 100);
+  generationTimerId = setInterval(updateGenerationTimer, 50);
 }
 
 function finishGenerationIndicator(type = "success", message = "") {
