@@ -1489,3 +1489,415 @@ textarea {
     font-size: 26px !important;
   }
 }
+
+/* =========================================================
+   Form Typography Fine Tune
+   表单和参数区域字体微调
+   放在 style.css 最后，用于覆盖前面较大的字体设置
+   ========================================================= */
+
+:root {
+  /* 参数标题字号：例如 提供商预设 / API Base URL / API Key / 模式 / 生成模型 / 提示词 */
+  --form-label-font-size: 13px;
+
+  /* 输入框、下拉框、文本域里的文字字号 */
+  --form-control-font-size: 14px;
+
+  /* 单选项文字字号：例如 生成 / 编辑 / 自动 / 低 / 中 / 高 */
+  --form-radio-font-size: 14px;
+
+  /* 顶部模型分类 Tab 字号：Nano Banana / GPT-Image / Flux */
+  --model-tab-font-size: 15px;
+
+  /* 模型卡片标题字号：例如 gpt-image-2 生图 / gpt-5.4 生图 */
+  --model-card-title-font-size: 16px;
+
+  /* 模型卡片描述字号 */
+  --model-card-desc-font-size: 13px;
+
+  /* 当前模型信息标题字号 */
+  --current-model-title-font-size: 18px;
+
+  /* 当前模型信息说明字号 */
+  --current-model-desc-font-size: 13px;
+
+  /* 右侧“结果预览”标题字号 */
+  --preview-title-font-size: 24px;
+
+  /* 右侧状态文字字号：例如 等待生成，结果会显示在这里 */
+  --preview-status-font-size: 14px;
+
+  /* 右侧 API 信息框标题字号：例如 当前使用 gpt-5.4 */
+  --api-info-title-font-size: 16px;
+
+  /* 右侧 API 信息框说明字号 */
+  --api-info-desc-font-size: 13px;
+
+  /* 空状态大字字号：例如 gpt-5.4 结果会显示在这里 */
+  --empty-title-font-size: 24px;
+
+  /* 空状态说明文字字号 */
+  --empty-desc-font-size: 14px;
+
+  /* 生成中提示框标题字号 */
+  --generation-title-font-size: 16px;
+
+  /* 生成中提示框说明字号 */
+  --generation-desc-font-size: 13px;
+}
+
+
+/* =========================================================
+   保持 Hero 大标题，不压缩“图片生成”
+   如果你想让“图片生成”再大一点，只改这里
+   ========================================================= */
+
+.hero h2 {
+  font-size: clamp(40px, 6vw, 70px) !important;
+  line-height: 1 !important;
+  letter-spacing: -0.06em !important;
+}
+
+.hero p {
+  font-size: 20px !important;
+}
+
+
+/* =========================================================
+   左侧表单区域：参数标题和输入控件
+   ========================================================= */
+
+.field-row > label,
+.field-row label:first-child {
+  /* 调整参数标题字号 */
+  font-size: var(--form-label-font-size) !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+input,
+select,
+textarea {
+  /* 调整输入框、下拉框、文本域文字大小 */
+  font-size: var(--form-control-font-size) !important;
+  line-height: 1.45 !important;
+
+  /* 控制输入框高度，觉得太矮可以改成 44px */
+  min-height: 40px !important;
+
+  /* 控制输入框内部留白 */
+  padding: 10px 14px !important;
+
+  border-radius: 14px !important;
+}
+
+textarea {
+  /* 提示词输入框高度，觉得太矮可以改成 130px */
+  min-height: 118px !important;
+}
+
+.field-row {
+  /* 参数组之间的上下间距，觉得太挤可以改成 18px */
+  margin-bottom: 16px !important;
+  gap: 8px !important;
+}
+
+.form {
+  /* 整个表单各组之间的间距 */
+  gap: 18px !important;
+}
+
+.field-row.inline {
+  gap: 12px !important;
+}
+
+.radio,
+.checkbox {
+  /* 单选项文字大小 */
+  font-size: var(--form-radio-font-size) !important;
+  line-height: 1.4 !important;
+}
+
+.radio input,
+.checkbox input {
+  width: 16px !important;
+  height: 16px !important;
+  min-height: 0 !important;
+}
+
+
+/* =========================================================
+   API Key 显示按钮
+   ========================================================= */
+
+.key-wrap button {
+  font-size: 14px !important;
+  height: 40px !important;
+  min-width: 74px !important;
+  padding: 0 14px !important;
+  border-radius: 14px !important;
+}
+
+
+/* =========================================================
+   模型分类 Tab：Nano Banana / GPT-Image / Flux
+   ========================================================= */
+
+.model-tabs {
+  padding: 6px !important;
+  border-radius: 16px !important;
+  margin-bottom: 22px !important;
+}
+
+.model-tabs button {
+  /* 调整 Nano Banana / GPT-Image / Flux 字号 */
+  font-size: var(--model-tab-font-size) !important;
+  line-height: 1 !important;
+
+  /* 控制 Tab 高度 */
+  padding: 12px 14px !important;
+
+  border-radius: 13px !important;
+}
+
+
+/* =========================================================
+   模型卡片：gpt-image-2 生图 / gpt-5.4 生图
+   ========================================================= */
+
+.cards {
+  gap: 12px !important;
+}
+
+.model-card {
+  padding: 16px !important;
+  border-radius: 16px !important;
+
+  /* 模型卡片最小高度，觉得卡片太高可以继续调小 */
+  min-height: 118px !important;
+}
+
+.model-card strong {
+  /* 模型卡片标题字号 */
+  font-size: var(--model-card-title-font-size) !important;
+  line-height: 1.3 !important;
+  margin-bottom: 8px !important;
+}
+
+.model-card span {
+  /* 模型卡片描述字号 */
+  font-size: var(--model-card-desc-font-size) !important;
+  line-height: 1.55 !important;
+}
+
+
+/* =========================================================
+   当前模型信息框
+   ========================================================= */
+
+.current-model {
+  padding: 16px 18px !important;
+  border-radius: 16px !important;
+  margin: 16px 0 !important;
+}
+
+.current-model span {
+  font-size: 12px !important;
+  margin-bottom: 6px !important;
+}
+
+.current-model strong {
+  /* 当前模型名称字号 */
+  font-size: var(--current-model-title-font-size) !important;
+  line-height: 1.25 !important;
+}
+
+.current-model p {
+  /* 当前模型描述字号 */
+  font-size: var(--current-model-desc-font-size) !important;
+  line-height: 1.55 !important;
+  margin-top: 8px !important;
+}
+
+
+/* =========================================================
+   主生成按钮
+   ========================================================= */
+
+.primary-btn {
+  font-size: 15px !important;
+  height: 46px !important;
+  padding: 0 18px !important;
+  border-radius: 14px !important;
+}
+
+
+/* =========================================================
+   右侧结果预览区域
+   ========================================================= */
+
+.preview-head h3 {
+  /* 右侧“结果预览”字号 */
+  font-size: var(--preview-title-font-size) !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.035em !important;
+}
+
+#statusText {
+  /* 右侧状态文字字号 */
+  font-size: var(--preview-status-font-size) !important;
+  line-height: 1.55 !important;
+}
+
+#modelBadge.badge {
+  /* 右上角模型 badge 字号 */
+  font-size: 14px !important;
+
+  /* 控制 badge 大小 */
+  padding: 7px 12px !important;
+
+  white-space: nowrap !important;
+  min-width: max-content !important;
+}
+
+
+/* =========================================================
+   API 信息框
+   ========================================================= */
+
+.api-info {
+  padding: 16px !important;
+  border-radius: 18px !important;
+  margin-bottom: 18px !important;
+}
+
+.api-info span {
+  /* “真实 API”小标签字号 */
+  font-size: 12px !important;
+  padding: 5px 10px !important;
+}
+
+.api-info strong {
+  /* 当前使用 gpt-5.4 字号 */
+  font-size: var(--api-info-title-font-size) !important;
+  line-height: 1.35 !important;
+  margin-top: 12px !important;
+}
+
+.api-info p {
+  /* API 地址说明字号 */
+  font-size: var(--api-info-desc-font-size) !important;
+  line-height: 1.55 !important;
+}
+
+
+/* =========================================================
+   空状态区域
+   ========================================================= */
+
+.gallery {
+  min-height: 380px !important;
+  padding: 18px !important;
+  border-radius: 20px !important;
+}
+
+.empty-state {
+  max-width: 420px !important;
+  padding: 32px 24px !important;
+}
+
+.empty-badge {
+  font-size: 12px !important;
+  padding: 6px 11px !important;
+}
+
+.empty-state h4 {
+  /* 空状态大标题字号 */
+  font-size: var(--empty-title-font-size) !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.035em !important;
+  margin: 16px 0 10px !important;
+}
+
+.empty-state p {
+  /* 空状态说明字号 */
+  font-size: var(--empty-desc-font-size) !important;
+  line-height: 1.6 !important;
+}
+
+
+/* =========================================================
+   生成中提示框字体
+   ========================================================= */
+
+.generation-notice {
+  padding: 16px 18px !important;
+  border-radius: 18px !important;
+  gap: 14px !important;
+}
+
+.generation-notice__icon-wrap {
+  width: 42px !important;
+  height: 42px !important;
+}
+
+.generation-notice__icon {
+  width: 30px !important;
+  height: 30px !important;
+  font-size: 19px !important;
+}
+
+.generation-notice__top strong {
+  /* 生成中提示框标题字号 */
+  font-size: var(--generation-title-font-size) !important;
+  line-height: 1.45 !important;
+}
+
+.generation-notice__content p {
+  /* 生成中提示框描述字号 */
+  font-size: var(--generation-desc-font-size) !important;
+  line-height: 1.6 !important;
+}
+
+.generation-notice__meta span {
+  /* 生成模型 / 已用时 标签字号 */
+  font-size: 12px !important;
+  min-height: 28px !important;
+  padding: 5px 10px !important;
+}
+
+
+/* =========================================================
+   调试信息框
+   ========================================================= */
+
+.debug-box {
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  padding: 14px !important;
+  border-radius: 16px !important;
+}
+
+
+/* =========================================================
+   小屏幕适配
+   ========================================================= */
+
+@media (max-width: 720px) {
+  :root {
+    /* 小屏下参数标题字号 */
+    --form-label-font-size: 13px;
+
+    /* 小屏下输入框字号 */
+    --form-control-font-size: 14px;
+
+    /* 小屏下右侧标题字号 */
+    --preview-title-font-size: 22px;
+  }
+
+  .hero h2 {
+    /* 手机端保持“图片生成”较大，但不要溢出 */
+    font-size: 38px !important;
+  }
+}
