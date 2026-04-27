@@ -146,13 +146,35 @@
               <label for="size">尺寸</label>
               <select id="size">
                 <option value="auto">auto</option>
-                <option value="1024x1024">1024x1024 (Square)</option>
-                <option value="1536x1024">1536x1024 (Landscape)</option>
-                <option value="1024x1536">1024x1536 (Portrait)</option>
-                <option value="2048x2048">2048x2048 (2K Square)</option>
-                <option value="2048x1152">2048x1152 (2K Landscape)</option>
-                <option value="3840x2160">3840x2160 (4K Landscape)</option>
-                <option value="2160x3840">2160x3840 (4K Portrait)</option>
+
+                <option value="1024x1024" data-hide-for="gpt-5.4">
+                  1024x1024 (Square)
+                </option>
+
+                <option value="1536x1024">
+                  1536x1024 (Landscape)
+                </option>
+
+                <option value="1024x1536">
+                  1024x1536 (Portrait)
+                </option>
+
+                <option value="2048x2048" data-hide-for="gpt-5.4">
+                  2048x2048 (2K Square)
+                </option>
+
+                <option value="2048x1152">
+                  2048x1152 (2K Landscape)
+                </option>
+
+                <option value="3840x2160">
+                  3840x2160 (4K Landscape)
+                </option>
+
+                <option value="2160x3840" data-hide-for="gpt-5.4">
+                  2160x3840 (4K Portrait)
+                </option>
+
                 <option value="custom">自定义尺寸</option>
               </select>
             </div>
@@ -189,17 +211,20 @@
               </label>
             </div>
 
-            <div class="field-row inline">
+            <div class="field-row">
               <label>输出格式</label>
+
               <label class="radio">
                 <input type="radio" name="format" value="png" checked />
                 <span>PNG</span>
               </label>
-              <label class="radio">
+
+              <label class="radio" data-hide-for="gpt-5.4">
                 <input type="radio" name="format" value="jpeg" />
                 <span>JPEG</span>
               </label>
-              <label class="radio">
+
+              <label class="radio" data-hide-for="gpt-5.4">
                 <input type="radio" name="format" value="webp" />
                 <span>WebP</span>
               </label>

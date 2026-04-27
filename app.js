@@ -7,18 +7,18 @@ const GPT54_MODEL = "gpt-5.4";
 
 const RESPONSES_IMAGE_MODELS = new Set([GPT54_MODEL]);
 
-// gpt-5.4 模型不显示这些尺寸
-// 用户说的 2024*2048，HTML 里实际是 2048x2048，这里按 2048x2048 处理
+// gpt-5.4 模型不显示/不允许这些尺寸。
+// 你之前说的 2024*2048，HTML 里实际是 2048x2048，这里按 2048x2048 处理。
 const GPT54_DISABLED_SIZES = new Set([
   "1024x1024",
   "2048x2048",
   "2160x3840",
 ]);
 
-// gpt-5.4 只允许 PNG
+// gpt-5.4 只允许 PNG。
 const GPT54_ALLOWED_FORMATS = new Set(["png"]);
 
-// Responses API 图片生成可能会先返回 generating 状态，这里做轮询
+// Responses API 图片生成可能会先返回 generating 状态，这里做轮询。
 const RESPONSES_POLL_INTERVAL_MS = 3000;
 const RESPONSES_MAX_POLL_ATTEMPTS = 20;
 
@@ -46,16 +46,21 @@ const gallery = $("#gallery");
 const debugBox = $("#debugBox");
 const themeBtn = $("#themeBtn");
 
-// 缓存原始尺寸选项，用于模型切换时恢复
+// 缓存原始尺寸选项，用于模型切换时恢复。
+// 如果 index.html 中 option 写了 data-hide-for="gpt-5.4"，这里会读取。
+// 即使 HTML 没写 data-hide-for，后面也会通过 GPT54_DISABLED_SIZES 做兜底。
 const ORIGINAL_SIZE_OPTIONS = sizeSelect
   ? Array.from(sizeSelect.options).map((option) => ({
       value: option.value,
       text: option.textContent,
       disabled: option.disabled,
+      hideFor: parseModelList(option.dataset.hideFor),
     }))
   : [];
 
-// 缓存原始输出格式选项，用于模型切换时恢复
+// 缓存原始输出格式选项，用于模型切换时恢复。
+// 如果 index.html 中 label.radio 写了 data-hide-for="gpt-5.4"，这里会读取。
+// 即使 HTML 没写 data-hide-for，后面也会通过 GPT54_ALLOWED_FORMATS 做兜底。
 const formatFieldRow = document
   .querySelector('input[name="format"]')
   ?.closest(".field-row");
@@ -67,6 +72,7 @@ const ORIGINAL_FORMAT_OPTIONS = $$('input[name="format"]').map((input) => {
     value: input.value,
     checked: input.checked,
     labelHTML: label ? label.outerHTML : "",
+    hideFor: parseModelList(label?.dataset.hideFor || input.dataset.hideFor),
   };
 });
 
@@ -260,8 +266,25 @@ function updateApiInfo() {
   }
 }
 
+function parseModelList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function isGpt54Model(model) {
   return normalizeModelName(model) === GPT54_MODEL;
+}
+
+function shouldHideForModel(item, model) {
+  model = normalizeModelName(model);
+
+  if (!item?.hideFor?.length) {
+    return false;
+  }
+
+  return item.hideFor.includes(model);
 }
 
 function applyModelUiRestrictions(model) {
@@ -279,8 +302,14 @@ function applySizeOptionsForModel(model) {
   sizeSelect.innerHTML = "";
 
   const options = ORIGINAL_SIZE_OPTIONS.filter((option) => {
-    if (isGpt54Model(model)) {
-      return !GPT54_DISABLED_SIZES.has(option.value);
+    // 优先按 HTML 上的 data-hide-for 判断。
+    if (shouldHideForModel(option, model)) {
+      return false;
+    }
+
+    // 兜底：即使 HTML 没加 data-hide-for，gpt-5.4 也隐藏这些尺寸。
+    if (isGpt54Model(model) && GPT54_DISABLED_SIZES.has(option.value)) {
+      return false;
     }
 
     return true;
@@ -310,8 +339,14 @@ function applyFormatOptionsForModel(model) {
     document.querySelector('input[name="format"]:checked')?.value || "png";
 
   const options = ORIGINAL_FORMAT_OPTIONS.filter((option) => {
-    if (isGpt54Model(model)) {
-      return GPT54_ALLOWED_FORMATS.has(option.value);
+    // 优先按 HTML 上的 data-hide-for 判断。
+    if (shouldHideForModel(option, model)) {
+      return false;
+    }
+
+    // 兜底：即使 HTML 没加 data-hide-for，gpt-5.4 也只保留 PNG。
+    if (isGpt54Model(model) && !GPT54_ALLOWED_FORMATS.has(option.value)) {
+      return false;
     }
 
     return true;
@@ -366,7 +401,7 @@ async function handleGenerate(event) {
   const key = apiKey?.value.trim() || "";
 
   // 防御性处理：
-  // 即使用户通过控制台强行改 DOM，gpt-5.4 也不提交被禁用的尺寸和格式
+  // 即使用户通过控制台强行改 DOM，gpt-5.4 也不提交被禁用的尺寸和格式。
   if (isGpt54Model(model)) {
     if (GPT54_DISABLED_SIZES.has(size)) {
       console.warn(`gpt-5.4 不允许尺寸 ${size}，已自动改为 auto`);
@@ -523,7 +558,7 @@ async function callImagesGenerationsApi({
   if (background && background !== "auto") payload.background = background;
 
   // 对 gpt-image 系列通常是 output_format。
-  // 如果你的中转站只接受 response_format，可以按实际情况改回去。
+  // 如果你的中转站只接受 response_format，可以按实际情况改回 response_format。
   if (format && format !== "png") payload.output_format = format;
 
   console.log("Images API 请求参数：", payload);
@@ -620,7 +655,7 @@ async function callResponsesImageApi({
       imageTool.background = background;
     }
 
-    // gpt-5.4 只允许 PNG；Responses API 图片工具使用 output_format
+    // gpt-5.4 只允许 PNG；Responses API 图片工具使用 output_format。
     if (isGpt54Model(model)) {
       imageTool.output_format = "png";
     } else if (format) {
@@ -940,12 +975,10 @@ function extractImagesFromResponses(raw) {
         return;
       }
 
-      // Markdown 图片：![xxx](https://...)
       const markdownImages = [...text.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)];
       markdownImages.forEach((match) => {
         const src = match[1];
 
-        // sandbox:/mnt/data/... 不是浏览器可直接显示的 URL
         if (src.startsWith("http://") || src.startsWith("https://")) {
           pushDisplayableImage(src);
         }
@@ -955,13 +988,11 @@ function extractImagesFromResponses(raw) {
         }
       });
 
-      // 文本里的普通 URL
       const urls = text.match(/https?:\/\/[^\s"'<>)]*/g);
       if (urls) {
         urls.forEach(pushDisplayableImage);
       }
 
-      // 字符串里可能包了一层 JSON
       if (
         (text.startsWith("{") && text.endsWith("}")) ||
         (text.startsWith("[") && text.endsWith("]"))
@@ -991,7 +1022,6 @@ function extractImagesFromResponses(raw) {
           "png",
       };
 
-      // 常见图片字段
       if (value.url) {
         pushDisplayableImage(value.url);
       }
@@ -1016,7 +1046,6 @@ function extractImagesFromResponses(raw) {
         pushBase64Image(value.base64, localContext.output_format);
       }
 
-      // Responses API image_generation_call 常见字段
       if (value.result) {
         if (typeof value.result === "string") {
           if (
@@ -1033,7 +1062,6 @@ function extractImagesFromResponses(raw) {
         }
       }
 
-      // 递归兜底
       Object.values(value).forEach((child) => {
         walk(child, localContext);
       });
