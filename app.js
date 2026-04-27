@@ -238,7 +238,7 @@ async function callImageGenerationApi({
   quality,
   count,
 }) {
-  const url = `${baseURL}/images/generations`;
+  const url = `${baseURL}/v1/images/generations`;
 
   const payload = {
     model,
