@@ -6,6 +6,10 @@ const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 
 const RESPONSES_IMAGE_MODELS = new Set(["gpt-5.4"]);
 
+// Responses API 图片生成可能会先返回 generating 状态，这里做轮询
+const RESPONSES_POLL_INTERVAL_MS = 3000;
+const RESPONSES_MAX_POLL_ATTEMPTS = 20;
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -203,9 +207,7 @@ function getEndpointForModel(model) {
 }
 
 function updateApiInfo() {
-  const model = normalizeModelName(
-    modelSelect?.value || DEFAULT_IMAGE_MODEL
-  );
+  const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
 
   if (apiModeBadge) {
     apiModeBadge.textContent = "真实 API";
@@ -230,12 +232,17 @@ async function handleGenerate(event) {
   const prompt = promptInput?.value.trim() || "";
   const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
   const size = sizeSelect?.value || "auto";
-  const quality = document.querySelector('input[name="quality"]:checked')?.value || "auto";
-  const background = document.querySelector('input[name="background"]:checked')?.value || "auto";
-  const format = document.querySelector('input[name="format"]:checked')?.value || "png";
+  const quality =
+    document.querySelector('input[name="quality"]:checked')?.value || "auto";
+  const background =
+    document.querySelector('input[name="background"]:checked')?.value || "auto";
+  const format =
+    document.querySelector('input[name="format"]:checked')?.value || "png";
   const count = clamp(Number(countInput?.value || 1), 1, 4);
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const key = apiKey?.value.trim() || "";
+
+  console.log("页面读取到的质量 quality =", quality);
 
   if (!prompt) {
     setStatus("请先输入 Prompt。", "warning");
@@ -259,7 +266,14 @@ async function handleGenerate(event) {
     debugBox.textContent = "";
   }
 
-  console.log("准备发送的生成参数：", { size, quality, background, format });
+  console.log("准备发送的生成参数：", {
+    model,
+    size,
+    quality,
+    background,
+    format,
+    count,
+  });
 
   try {
     setStatus("正在调用 XuAI API 中转站...", "loading");
@@ -291,11 +305,11 @@ async function handleGenerate(event) {
     setStatus(error.message || "生成失败，请查看控制台。", "error");
 
     showDebug(
-    error.raw || {
-      error: error.message,
-      model,
-      request_url: getEndpointForModel(model),
-      tip: "如果是 504 Gateway Timeout，通常表示中转站请求上游模型超时；如果是 CORS，则需要在中转站配置跨域。",
+      error.raw || {
+        error: error.message,
+        model,
+        request_url: getEndpointForModel(model),
+        tip: "如果是 504 Gateway Timeout，通常表示中转站请求上游模型超时；如果是 CORS，则需要在中转站配置跨域。",
       }
     );
   } finally {
@@ -370,9 +384,12 @@ async function callImagesGenerationsApi({
   if (size && size !== "auto") payload.size = size;
   if (quality && quality !== "auto") payload.quality = quality;
   if (background && background !== "auto") payload.background = background;
-  if (format && format !== "png") payload.response_format = format;
 
-  console.log("Images API 请求参数（最终发给大模型的 payload）：", payload);
+  // 对 gpt-image 系列，通常是 output_format。
+  // 如果你的中转站只接受 response_format，可以按实际情况改回去。
+  if (format && format !== "png") payload.output_format = format;
+
+  console.log("Images API 请求参数：", payload);
 
   const response = await fetch(url, {
     method: "POST",
@@ -386,7 +403,13 @@ async function callImagesGenerationsApi({
   const raw = await safeJson(response);
 
   if (!response.ok) {
-    throw new Error(buildApiErrorMessage(raw, response, "Images API"));
+    const error = new Error(buildApiErrorMessage(raw, response, "Images API"));
+    error.raw = {
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+    };
+    throw error;
   }
 
   const data = Array.isArray(raw?.data) ? raw.data : [];
@@ -396,17 +419,32 @@ async function callImagesGenerationsApi({
       if (item.url) return item.url;
       if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
       if (item.image_base64) return `data:image/png;base64,${item.image_base64}`;
+      if (item.base64) return `data:image/png;base64,${item.base64}`;
       return null;
     })
     .filter(Boolean);
 
   if (!images.length) {
-    throw new Error("Images API 返回成功，但没有找到图片 URL 或 base64 图片数据。");
+    const error = new Error(
+      "Images API 返回成功，但没有找到图片 URL 或 base64 图片数据。"
+    );
+    error.raw = {
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+      tip: "请检查返回结构中图片字段名称，或确认接口是否返回了 file_id/sandbox 路径而不是可直接显示的图片数据。",
+    };
+    throw error;
   }
 
   return {
     images,
-    raw,
+    raw: {
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+      extracted_images_count: images.length,
+    },
   };
 }
 
@@ -426,28 +464,38 @@ async function callResponsesImageApi({
   console.log("准备请求 Responses API：", url);
 
   const images = [];
-  const raws = [];
+  const debugItems = [];
 
   for (let i = 0; i < count; i++) {
     const imageTool = {
       type: "image_generation",
     };
 
-    if (size && size !== "auto") imageTool.size = size;
-    if (quality && quality !== "auto") imageTool.quality = quality;
-    if (background && background !== "auto") imageTool.background = background;
-    if (format) imageTool.output_format = format;
+    if (size && size !== "auto") {
+      imageTool.size = size;
+    }
+
+    if (quality && quality !== "auto") {
+      imageTool.quality = quality;
+    }
+
+    if (background && background !== "auto") {
+      imageTool.background = background;
+    }
+
+    // Responses API 图片工具使用 output_format，不是 response_format
+    if (format) {
+      imageTool.output_format = format;
+    }
 
     const payload = {
       model,
       input: prompt,
       tools: [imageTool],
-      tool_choice: {
-        type: "image_generation",
-      },
     };
 
     console.log(`Responses API 请求参数 #${i + 1}：`, payload);
+    console.log("最终发送给 Responses API 的 imageTool =", imageTool);
 
     const response = await fetch(url, {
       method: "POST",
@@ -458,99 +506,299 @@ async function callResponsesImageApi({
       body: JSON.stringify(payload),
     });
 
-    const raw = await safeJson(response);
-    raws.push(raw);
+    let raw = await safeJson(response);
 
     if (!response.ok) {
-      throw new Error(buildApiErrorMessage(raw, response, "Responses API"));
+      const error = new Error(
+        buildApiErrorMessage(raw, response, "Responses API")
+      );
+      error.raw = {
+        request_url: url,
+        request_payload: payload,
+        response: raw,
+      };
+      throw error;
     }
 
-    console.log("Responses API 原始返回：", raw);
+    console.log("Responses API 初始返回：", raw);
+
+    const waitResult = await waitForResponsesImageResult({
+      baseURL,
+      key,
+      initialRaw: raw,
+      requestPayload: payload,
+    });
+
+    raw = waitResult.raw;
 
     const currentImages = extractImagesFromResponses(raw);
 
     if (!currentImages.length) {
-      const error = new Error("Responses API 返回成功，但没有找到图片数据。请查看下方原始返回结构。");
-      error.raw = raw;
+      const error = new Error(
+        "Responses API 返回成功，但没有找到图片数据。请查看下方 request_payload 和 response。"
+      );
+
+      error.raw = {
+        request_url: url,
+        request_payload: payload,
+        response: raw,
+        pending_image_call: hasPendingImageCall(raw),
+        tip: "如果 response.output 里 image_generation_call.status 仍是 generating，说明图片还没真正生成完成；如果 result 是空，则需要继续轮询或降低尺寸/质量。如果返回 file_id 或 sandbox:/mnt/data 路径，前端不能直接用 <img> 显示，需要服务端转换成公网 URL 或 base64。",
+      };
+
       throw error;
     }
 
     images.push(...currentImages);
+
+    debugItems.push({
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+      poll_attempts: waitResult.pollAttempts,
+      extracted_images_count: currentImages.length,
+      note:
+        getResponseQuality(raw) && getResponseQuality(raw) !== quality
+          ? `注意：前端请求 quality=${quality}，但响应里显示 quality=${getResponseQuality(
+              raw
+            )}，说明服务端或上游模型可能做了自动降级。`
+          : undefined,
+    });
   }
 
   return {
     images: images.slice(0, count),
-    raw: count === 1 ? raws[0] : raws,
+    raw: count === 1 ? debugItems[0] : debugItems,
   };
+}
+
+async function waitForResponsesImageResult({
+  baseURL,
+  key,
+  initialRaw,
+  requestPayload,
+}) {
+  let raw = initialRaw;
+  let pollAttempts = 0;
+
+  for (let attempt = 0; attempt <= RESPONSES_MAX_POLL_ATTEMPTS; attempt++) {
+    const images = extractImagesFromResponses(raw);
+
+    if (images.length) {
+      return {
+        raw,
+        pollAttempts,
+      };
+    }
+
+    const pending = hasPendingImageCall(raw);
+
+    if (!pending) {
+      return {
+        raw,
+        pollAttempts,
+      };
+    }
+
+    const responseId = raw?.id;
+
+    if (!responseId) {
+      return {
+        raw,
+        pollAttempts,
+      };
+    }
+
+    if (attempt === RESPONSES_MAX_POLL_ATTEMPTS) {
+      return {
+        raw,
+        pollAttempts,
+      };
+    }
+
+    pollAttempts += 1;
+
+    const message = `图片仍在生成中，正在轮询结果 ${pollAttempts}/${RESPONSES_MAX_POLL_ATTEMPTS}...`;
+    console.log(message);
+    setStatus(message, "loading");
+
+    await delay(RESPONSES_POLL_INTERVAL_MS);
+
+    const retrieveUrl = `${baseURL}/v1/responses/${encodeURIComponent(
+      responseId
+    )}`;
+
+    const retrieveResponse = await fetch(retrieveUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${key}`,
+      },
+    });
+
+    const nextRaw = await safeJson(retrieveResponse);
+
+    if (!retrieveResponse.ok) {
+      const error = new Error(
+        buildApiErrorMessage(nextRaw, retrieveResponse, "Responses API 轮询")
+      );
+
+      error.raw = {
+        request_url: `${baseURL}/v1/responses`,
+        request_payload: requestPayload,
+        retrieve_url: retrieveUrl,
+        initial_response: initialRaw,
+        retrieve_response: nextRaw,
+        tip: "中转站可能不支持 GET /v1/responses/{id} 轮询接口。如果不支持，需要降低尺寸/质量，或者让后端实现异步任务。",
+      };
+
+      throw error;
+    }
+
+    console.log(`Responses API 轮询返回 #${pollAttempts}：`, nextRaw);
+
+    raw = nextRaw;
+  }
+
+  return {
+    raw,
+    pollAttempts,
+  };
+}
+
+function hasPendingImageCall(raw) {
+  if (!raw) return false;
+
+  const responseStatus = String(raw.status || "").toLowerCase();
+
+  if (
+    responseStatus === "queued" ||
+    responseStatus === "in_progress" ||
+    responseStatus === "generating"
+  ) {
+    return true;
+  }
+
+  if (!Array.isArray(raw.output)) {
+    return false;
+  }
+
+  return raw.output.some((item) => {
+    if (item?.type !== "image_generation_call") return false;
+
+    const status = String(item.status || "").toLowerCase();
+    const result = item.result;
+
+    if (result) return false;
+
+    return (
+      status === "queued" ||
+      status === "pending" ||
+      status === "in_progress" ||
+      status === "generating"
+    );
+  });
+}
+
+function getResponseQuality(raw) {
+  if (!Array.isArray(raw?.output)) return "";
+
+  const imageCall = raw.output.find(
+    (item) => item?.type === "image_generation_call"
+  );
+
+  return imageCall?.quality || "";
 }
 
 function extractImagesFromResponses(raw) {
   const images = [];
   const visited = new WeakSet();
 
-  const addImage = (src) => {
-    if (!src) return;
+  const pushDisplayableImage = (value) => {
+    if (!value) return;
 
-    const value = String(src).trim();
+    const text = String(value).trim();
 
-    if (
-      value.startsWith("http://") ||
-      value.startsWith("https://") ||
-      value.startsWith("data:image/")
-    ) {
-      images.push(value);
+    if (text.startsWith("http://") || text.startsWith("https://")) {
+      images.push(text);
+      return;
+    }
+
+    if (text.startsWith("data:image/")) {
+      images.push(text);
+      return;
     }
   };
 
-  const walk = (value) => {
+  const pushBase64Image = (value, format = "png") => {
+    if (!value) return;
+
+    const cleaned = String(value).replace(/\s/g, "");
+
+    if (!looksLikeBase64Image(cleaned)) return;
+
+    const imageFormat = normalizeImageFormat(format);
+    images.push(`data:image/${imageFormat};base64,${cleaned}`);
+  };
+
+  const walk = (value, context = {}) => {
     if (!value) return;
 
     if (Array.isArray(value)) {
-      value.forEach(walk);
+      value.forEach((item) => walk(item, context));
       return;
     }
 
     if (typeof value === "string") {
       const text = value.trim();
 
-      // 1. 直接是 URL
+      if (!text) return;
+
       if (text.startsWith("http://") || text.startsWith("https://")) {
-        addImage(text);
+        pushDisplayableImage(text);
         return;
       }
 
-      // 2. 直接是 data:image
       if (text.startsWith("data:image/")) {
-        addImage(text);
+        pushDisplayableImage(text);
         return;
       }
 
-      // 3. 直接是图片 base64
       if (looksLikeBase64Image(text)) {
-        images.push(`data:image/png;base64,${text.replace(/\s/g, "")}`);
+        pushBase64Image(text, context.output_format || context.format || "png");
         return;
       }
 
-      // 4. 文本里有 Markdown 图片：![xxx](url)
+      // Markdown 图片：![xxx](https://...)
       const markdownImages = [...text.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)];
       markdownImages.forEach((match) => {
-        addImage(match[1]);
+        const src = match[1];
+
+        // sandbox:/mnt/data/... 不是浏览器可直接显示的 URL
+        if (src.startsWith("http://") || src.startsWith("https://")) {
+          pushDisplayableImage(src);
+        }
+
+        if (src.startsWith("data:image/")) {
+          pushDisplayableImage(src);
+        }
       });
 
-      // 5. 文本里有普通 URL
+      // 文本里的普通 URL
       const urls = text.match(/https?:\/\/[^\s"'<>)]*/g);
       if (urls) {
-        urls.forEach(addImage);
+        urls.forEach(pushDisplayableImage);
       }
 
-      // 6. 字符串本身是 JSON
+      // 字符串里可能包了一层 JSON
       if (
         (text.startsWith("{") && text.endsWith("}")) ||
         (text.startsWith("[") && text.endsWith("]"))
       ) {
         try {
-          walk(JSON.parse(text));
-        } catch {}
+          walk(JSON.parse(text), context);
+        } catch {
+          // ignore
+        }
       }
 
       return;
@@ -560,7 +808,63 @@ function extractImagesFromResponses(raw) {
       if (visited.has(value)) return;
       visited.add(value);
 
-      Object.values(value).forEach(walk);
+      const localContext = {
+        ...context,
+        output_format:
+          value.output_format ||
+          value.outputFormat ||
+          value.format ||
+          context.output_format ||
+          context.format ||
+          "png",
+      };
+
+      // 常见图片字段
+      if (value.url) {
+        pushDisplayableImage(value.url);
+      }
+
+      if (value.image_url) {
+        if (typeof value.image_url === "string") {
+          pushDisplayableImage(value.image_url);
+        } else {
+          walk(value.image_url, localContext);
+        }
+      }
+
+      if (value.b64_json) {
+        pushBase64Image(value.b64_json, localContext.output_format);
+      }
+
+      if (value.image_base64) {
+        pushBase64Image(value.image_base64, localContext.output_format);
+      }
+
+      if (value.base64) {
+        pushBase64Image(value.base64, localContext.output_format);
+      }
+
+      // Responses API image_generation_call 常见字段
+      if (value.result) {
+        if (typeof value.result === "string") {
+          if (
+            value.result.startsWith("http://") ||
+            value.result.startsWith("https://") ||
+            value.result.startsWith("data:image/")
+          ) {
+            pushDisplayableImage(value.result);
+          } else {
+            pushBase64Image(value.result, localContext.output_format);
+          }
+        } else {
+          walk(value.result, localContext);
+        }
+      }
+
+      // 递归兜底
+      Object.values(value).forEach((child) => {
+        walk(child, localContext);
+      });
     }
   };
 
@@ -577,14 +881,29 @@ function looksLikeBase64Image(value) {
   if (cleaned.length < 100) return false;
 
   // 常见图片 base64 开头：
-  // PNG: iVBORw0KGgo
+  // PNG:  iVBORw0KGgo
   // JPEG: /9j/
   // WEBP: UklGR
-  // GIF: R0lGOD
-  return (
-    /^(iVBORw0KGgo|\/9j\/|UklGR|R0lGOD)/.test(cleaned) &&
-    /^[A-Za-z0-9+/=_-]+$/.test(cleaned)
+  // GIF:  R0lGOD
+  const hasImageMagicHeader = /^(iVBORw0KGgo|\/9j\/|UklGR|R0lGOD)/.test(
+    cleaned
   );
+
+  if (!hasImageMagicHeader) return false;
+
+  return /^[A-Za-z0-9+/=_-]+$/.test(cleaned);
+}
+
+function normalizeImageFormat(format) {
+  const value = String(format || "png").toLowerCase();
+
+  if (value === "jpg") return "jpeg";
+  if (value === "jpeg") return "jpeg";
+  if (value === "webp") return "webp";
+  if (value === "gif") return "gif";
+  if (value === "png") return "png";
+
+  return "png";
 }
 
 function buildApiErrorMessage(raw, response, apiName) {
@@ -621,7 +940,7 @@ function buildApiErrorMessage(raw, response, apiName) {
   }
 
   if (response.status === 404) {
-    return `${apiName} 返回 404 Not Found：请检查请求路径或模型是否支持。${
+    return `${apiName} 返回 404 Not Found：请检查请求路径、模型是否支持，或中转站是否支持该接口。${
       detail ? `详细信息：${detail}` : ""
     }`;
   }
@@ -684,10 +1003,69 @@ function setStatus(message, type = "info") {
 function showDebug(data) {
   if (!debugBox) return;
 
+  const redacted = redactLargeImageData(data);
+
   debugBox.textContent =
-    typeof data === "string" ? data : JSON.stringify(data, null, 2);
+    typeof redacted === "string" ? redacted : JSON.stringify(redacted, null, 2);
 
   debugBox.classList.add("show");
+}
+
+function redactLargeImageData(value, seen = new WeakSet()) {
+  if (value == null) return value;
+
+  if (typeof value === "string") {
+    const text = value.trim();
+
+    if (text.startsWith("data:image/")) {
+      return `[data:image 已隐藏，长度 ${text.length}]`;
+    }
+
+    if (looksLikeBase64Image(text)) {
+      return `[base64 图片已隐藏，长度 ${text.length}]`;
+    }
+
+    if (text.length > 12000) {
+      return `${text.slice(0, 12000)}\n...[内容过长，已截断，原长度 ${text.length}]`;
+    }
+
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => redactLargeImageData(item, seen));
+  }
+
+  if (typeof value === "object") {
+    if (seen.has(value)) {
+      return "[Circular]";
+    }
+
+    seen.add(value);
+
+    const output = {};
+
+    Object.entries(value).forEach(([key, child]) => {
+      const lowerKey = key.toLowerCase();
+
+      if (
+        lowerKey.includes("b64") ||
+        lowerKey.includes("base64") ||
+        lowerKey === "result"
+      ) {
+        if (typeof child === "string" && child.length > 100) {
+          output[key] = redactLargeImageData(child, seen);
+          return;
+        }
+      }
+
+      output[key] = redactLargeImageData(child, seen);
+    });
+
+    return output;
+  }
+
+  return value;
 }
 
 async function safeJson(response) {
@@ -712,4 +1090,8 @@ function clamp(value, min, max) {
 
 function uniqueArray(array) {
   return Array.from(new Set(array));
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
