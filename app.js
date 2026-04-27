@@ -107,8 +107,17 @@ function lockProviderSettings() {
   }
 }
 
+function normalizeModelName(model) {
+  if (model === "gpt-5.4-image") {
+    return "gpt-5.4";
+  }
+
+  return model;
+}
+
 function setModel(model) {
-  if (!model) model = "gpt-image-2";
+  model = normalizeModelName(model);
+  if (!model) model = DEFAULT_IMAGE_MODEL || "gpt-image-2";
 
   if (modelSelect) {
     const exists = Array.from(modelSelect.options).some((option) => option.value === model);
@@ -153,7 +162,7 @@ async function handleGenerate(event) {
   lockProviderSettings();
 
   const prompt = promptInput?.value.trim() || "";
-  const model = modelSelect?.value || "gpt-image-2";
+  const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL || "gpt-image-2");
   const size = sizeSelect?.value || "1024x1024";
   const quality = qualitySelect?.value || "auto";
   const count = clamp(Number(countInput?.value || 1), 1, 4);
