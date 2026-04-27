@@ -290,12 +290,14 @@ async function handleGenerate(event) {
 
     setStatus(error.message || "生成失败，请查看控制台。", "error");
 
-    showDebug({
+    showDebug(
+    error.raw || {
       error: error.message,
       model,
       request_url: getEndpointForModel(model),
       tip: "如果是 504 Gateway Timeout，通常表示中转站请求上游模型超时；如果是 CORS，则需要在中转站配置跨域。",
-    });
+      }
+    );
   } finally {
     if (generateBtn) {
       generateBtn.disabled = false;
@@ -434,12 +436,15 @@ async function callResponsesImageApi({
     if (size && size !== "auto") imageTool.size = size;
     if (quality && quality !== "auto") imageTool.quality = quality;
     if (background && background !== "auto") imageTool.background = background;
-    if (format && format !== "png") imageTool.response_format = format;
+    if (format) imageTool.output_format = format;
 
     const payload = {
       model,
       input: prompt,
       tools: [imageTool],
+      tool_choice: {
+        type: "image_generation",
+      },
     };
 
     console.log(`Responses API 请求参数 #${i + 1}：`, payload);
@@ -460,10 +465,14 @@ async function callResponsesImageApi({
       throw new Error(buildApiErrorMessage(raw, response, "Responses API"));
     }
 
+    console.log("Responses API 原始返回：", raw);
+
     const currentImages = extractImagesFromResponses(raw);
 
     if (!currentImages.length) {
-      throw new Error("Responses API 返回成功，但没有找到图片数据。");
+      const error = new Error("Responses API 返回成功，但没有找到图片数据。请查看下方原始返回结构。");
+      error.raw = raw;
+      throw error;
     }
 
     images.push(...currentImages);
@@ -477,110 +486,105 @@ async function callResponsesImageApi({
 
 function extractImagesFromResponses(raw) {
   const images = [];
+  const visited = new WeakSet();
 
-  const pushImage = (value) => {
+  const addImage = (src) => {
+    if (!src) return;
+
+    const value = String(src).trim();
+
+    if (
+      value.startsWith("http://") ||
+      value.startsWith("https://") ||
+      value.startsWith("data:image/")
+    ) {
+      images.push(value);
+    }
+  };
+
+  const walk = (value) => {
     if (!value) return;
 
     if (Array.isArray(value)) {
-      value.forEach((item) => pushImage(item));
+      value.forEach(walk);
       return;
     }
 
     if (typeof value === "string") {
       const text = value.trim();
 
+      // 1. 直接是 URL
       if (text.startsWith("http://") || text.startsWith("https://")) {
-        images.push(text);
+        addImage(text);
         return;
       }
 
+      // 2. 直接是 data:image
       if (text.startsWith("data:image/")) {
-        images.push(text);
+        addImage(text);
         return;
       }
 
+      // 3. 直接是图片 base64
       if (looksLikeBase64Image(text)) {
-        images.push(`data:image/png;base64,${text}`);
+        images.push(`data:image/png;base64,${text.replace(/\s/g, "")}`);
         return;
+      }
+
+      // 4. 文本里有 Markdown 图片：![xxx](url)
+      const markdownImages = [...text.matchAll(/!\[[^\]]*]\(([^)]+)\)/g)];
+      markdownImages.forEach((match) => {
+        addImage(match[1]);
+      });
+
+      // 5. 文本里有普通 URL
+      const urls = text.match(/https?:\/\/[^\s"'<>)]*/g);
+      if (urls) {
+        urls.forEach(addImage);
+      }
+
+      // 6. 字符串本身是 JSON
+      if (
+        (text.startsWith("{") && text.endsWith("}")) ||
+        (text.startsWith("[") && text.endsWith("]"))
+      ) {
+        try {
+          walk(JSON.parse(text));
+        } catch {}
       }
 
       return;
     }
 
     if (typeof value === "object") {
-      if (value.url) {
-        pushImage(value.url);
-      }
+      if (visited.has(value)) return;
+      visited.add(value);
 
-      if (value.image_url) {
-        pushImage(value.image_url);
-      }
-
-      if (value.b64_json) {
-        pushImage(value.b64_json);
-      }
-
-      if (value.image_base64) {
-        pushImage(value.image_base64);
-      }
-
-      if (value.base64) {
-        pushImage(value.base64);
-      }
-
-      if (value.result) {
-        pushImage(value.result);
-      }
-
-      if (value.data) {
-        pushImage(value.data);
-      }
-
-      if (value.content) {
-        pushImage(value.content);
-      }
-
-      if (value.output) {
-        pushImage(value.output);
-      }
+      Object.values(value).forEach(walk);
     }
   };
 
-  if (Array.isArray(raw?.output)) {
-    raw.output.forEach((item) => {
-      if (item.type === "image_generation_call") {
-        pushImage(item.result);
-      }
-
-      pushImage(item);
-    });
-  }
-
-  if (Array.isArray(raw?.data)) {
-    raw.data.forEach((item) => {
-      pushImage(item);
-    });
-  }
-
-  if (raw?.image) {
-    pushImage(raw.image);
-  }
-
-  if (raw?.result) {
-    pushImage(raw.result);
-  }
+  walk(raw);
 
   return uniqueArray(images);
 }
 
 function looksLikeBase64Image(value) {
-  if (!value || value.length < 100) return false;
+  if (!value) return false;
 
-  const cleaned = value.replace(/\s/g, "");
+  const cleaned = String(value).replace(/\s/g, "");
 
   if (cleaned.length < 100) return false;
 
-  return /^[A-Za-z0-9+/=]+$/.test(cleaned);
+  // 常见图片 base64 开头：
+  // PNG: iVBORw0KGgo
+  // JPEG: /9j/
+  // WEBP: UklGR
+  // GIF: R0lGOD
+  return (
+    /^(iVBORw0KGgo|\/9j\/|UklGR|R0lGOD)/.test(cleaned) &&
+    /^[A-Za-z0-9+/=_-]+$/.test(cleaned)
+  );
 }
 
 function buildApiErrorMessage(raw, response, apiName) {
