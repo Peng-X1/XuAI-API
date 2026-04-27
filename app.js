@@ -396,18 +396,21 @@ async function handleGenerate(event) {
 
   const prompt = promptInput?.value.trim() || "";
   const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
-  let size = sizeSelect?.value || "auto";
 
-  const quality =
-    document.querySelector('input[name="quality"]:checked')?.value || "auto";
+  // 这些参数已从 UI 中移除。
+  // 如果需要控制尺寸、质量、背景、风格，请直接写进 Prompt。
+  // 默认不主动提交 size / quality / background。
+  let size = "auto";
+  const quality = "auto";
+  const background = "auto";
 
-  const background =
-    document.querySelector('input[name="background"]:checked')?.value || "auto";
+  // 输出格式不再暴露给 UI。
+  // 普通图片模型默认不额外提交格式；gpt-5.4 会在后面兜底固定为 png。
+  let format = "png";
 
-  let format =
-    document.querySelector('input[name="format"]:checked')?.value || "png";
+  // 生成数量已从 UI 移除，默认每次生成 1 张。
+  const count = 1;
 
-  const count = clamp(Number(countInput?.value || 1), 1, 4);
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const key = apiKey?.value.trim() || "";
 
