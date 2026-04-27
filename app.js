@@ -1,4 +1,4 @@
-const FIXED_PROVIDER_ID = "xuai";
+                                                     const FIXED_PROVIDER_ID = "xuai";
 const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
@@ -17,7 +17,7 @@ const toggleKeyBtn = $("#toggleKeyBtn");
 const modelSelect = $("#model");
 const promptInput = $("#prompt");
 const sizeSelect = $("#size");
-const qualitySelect = $("#quality");
+const qualitySelect = $("#quality");    // 下拉框获取图片质量
 const countInput = $("#count");
 const generateBtn = $("#generateBtn");
 
@@ -230,8 +230,11 @@ async function handleGenerate(event) {
 
   const prompt = promptInput?.value.trim() || "";
   const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
-  const size = sizeSelect?.value || "1024x1024";
-  const quality = qualitySelect?.value || "auto";
+  const size = sizeSelect?.value || "auto";
+  // 使用 querySelector 获取单选框选中的值
+  const quality = document.querySelector('input[name="quality"]:checked')?.value || "auto";
+  const background = document.querySelector('input[name="background"]:checked')?.value || "auto";
+  const format = document.querySelector('input[name="format"]:checked')?.value || "png";
   const count = clamp(Number(countInput?.value || 1), 1, 4);
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const key = apiKey?.value.trim() || "";
@@ -268,6 +271,8 @@ async function handleGenerate(event) {
       prompt,
       size,
       quality,
+      background,  // 新增
+      format,      // 新增
       count,
     });
 
@@ -357,6 +362,19 @@ async function callImagesGenerationsApi({
     payload.quality = quality;
   }
 
+  if (quality && quality !== "auto") {
+    payload.quality = quality;
+  }
+
+  // 新增背景和格式参数构建
+  if (background && background !== "auto") {
+    payload.background = background;
+  }
+
+  if (format && format !== "png") {
+    payload.response_format = format;
+  }
+
   console.log("Images API 请求参数：", payload);
 
   const response = await fetch(url, {
@@ -428,6 +446,15 @@ async function callResponsesImageApi({
       imageTool.quality = quality;
     }
 
+    // 新增背景和格式
+    if (background && background !== "auto") {
+      imageTool.background = background;
+    }
+    
+    if (format && format !== "png") {
+      imageTool.response_format = format;
+    }
+    
     const payload = {
       model,
       input: prompt,
