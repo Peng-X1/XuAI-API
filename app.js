@@ -1342,7 +1342,7 @@ function startGenerationIndicator(model) {
 
   updateGenerationTimer();
 
-  generationTimerId = setInterval(updateGenerationTimer, 1000);
+  generationTimerId = setInterval(updateGenerationTimer, 100);
 }
 
 function finishGenerationIndicator(type = "success", message = "") {
@@ -1419,14 +1419,14 @@ function updateGenerationTimer() {
 }
 
 function formatElapsedTime(milliseconds) {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const totalSecondsFloat = Math.max(0, milliseconds / 1000);
 
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const hours = Math.floor(totalSecondsFloat / 3600);
+  const minutes = Math.floor((totalSecondsFloat % 3600) / 60);
+  const secondsFloat = totalSecondsFloat % 60;
 
   const mm = String(minutes).padStart(2, "0");
-  const ss = String(seconds).padStart(2, "0");
+  const ss = secondsFloat.toFixed(2).padStart(5, "0");
 
   if (hours > 0) {
     const hh = String(hours).padStart(2, "0");
