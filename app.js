@@ -666,6 +666,9 @@ async function callResponsesImageApi({
       model,
       input: prompt,
       tools: [imageTool],
+
+      // 尽量强制模型调用图片工具，避免只返回文字
+      tool_choice: "required",
     };
 
     console.log(`Responses API 请求参数 #${i + 1}：`, payload);
