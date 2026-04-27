@@ -15,7 +15,6 @@ const promptInput = $("#prompt");
 const sizeSelect = $("#size");
 const qualitySelect = $("#quality");
 const countInput = $("#count");
-const demoMode = $("#demoMode");
 const generateBtn = $("#generateBtn");
 
 const currentModelText = $("#currentModelText");
@@ -86,10 +85,6 @@ function bindEvents() {
     });
   }
 
-  if (demoMode) {
-    demoMode.addEventListener("change", updateApiInfo);
-  }
-
   if (form) {
     form.addEventListener("submit", handleGenerate);
   }
@@ -134,11 +129,10 @@ function setModel(model) {
 }
 
 function updateApiInfo() {
-  const model = modelSelect?.value || "gpt-image-2";
-  const isDemo = demoMode?.checked;
+  const model = modelSelect?.value || "gpt-image-1";
 
   if (apiModeBadge) {
-    apiModeBadge.textContent = isDemo ? "演示模式" : "真实 API";
+    apiModeBadge.textContent = "真实 API";
   }
 
   if (apiInfoTitle) {
@@ -146,13 +140,8 @@ function updateApiInfo() {
   }
 
   if (apiInfoDesc) {
-    if (isDemo) {
-      apiInfoDesc.textContent =
-        "当前为演示模式，不会调用真实 API，只会生成占位预览图。";
-    } else {
-      apiInfoDesc.textContent =
-        `真实 API 模式会调用 ${FIXED_API_BASE}/v1/images/generations。`;
-    }
+    apiInfoDesc.textContent =
+      `真实 API 模式会调用 ${FIXED_API_BASE}/v1/images/generations。`;
   }
 }
 
@@ -188,31 +177,8 @@ async function handleGenerate(event) {
   }
 
   try {
-    if (demoMode?.checked) {
-      setStatus("演示模式生成中...", "loading");
-      await sleep(650);
-
-      const images = Array.from({ length: count }, (_, index) =>
-        createDemoImage({
-          prompt,
-          model,
-          size,
-          index: index + 1,
-        })
-      );
-
-      renderImages(images, {
-        model,
-        prompt,
-        isDemo: true,
-      });
-
-      setStatus("演示图片已生成。", "success");
-      return;
-    }
-
     if (!key) {
-      throw new Error("请填写 API Key，或者开启演示模式。");
+      throw new Error("请填写 API Key。");
     }
 
     setStatus("正在调用 XuAI API 中转站...", "loading");
@@ -349,50 +315,6 @@ function renderImages(images, meta) {
   gallery.innerHTML = html;
 }
 
-function createDemoImage({ prompt, model, size, index }) {
-  const [w, h] = size.split("x").map(Number);
-  const safePrompt = escapeXml(truncate(prompt, 120));
-  const now = new Date().toLocaleString();
-
-  const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#10243d"/>
-      <stop offset="45%" stop-color="#101827"/>
-      <stop offset="100%" stop-color="#25134a"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="35%" cy="25%" r="60%">
-      <stop offset="0%" stop-color="#19b7ff" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#19b7ff" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="100%" height="100%" fill="url(#bg)"/>
-  <rect width="100%" height="100%" fill="url(#glow)"/>
-  <circle cx="${w * 0.78}" cy="${h * 0.22}" r="${Math.min(w, h) * 0.16}" fill="#65e8ff" opacity="0.18"/>
-  <circle cx="${w * 0.22}" cy="${h * 0.76}" r="${Math.min(w, h) * 0.22}" fill="#7c3aed" opacity="0.2"/>
-  <rect x="${w * 0.08}" y="${h * 0.08}" width="${w * 0.84}" height="${h * 0.84}" rx="36"
-    fill="rgba(255,255,255,0.05)" stroke="rgba(101,232,255,0.35)" stroke-width="3"/>
-  <text x="${w * 0.12}" y="${h * 0.18}" fill="#65e8ff" font-size="${Math.max(28, w * 0.045)}" font-family="Arial, Microsoft YaHei" font-weight="700">
-    XuAI Demo Image #${index}
-  </text>
-  <text x="${w * 0.12}" y="${h * 0.28}" fill="#e8eef8" font-size="${Math.max(24, w * 0.035)}" font-family="Arial, Microsoft YaHei" font-weight="700">
-    ${model}
-  </text>
-  <foreignObject x="${w * 0.12}" y="${h * 0.36}" width="${w * 0.76}" height="${h * 0.28}">
-    <div xmlns="http://www.w3.org/1999/xhtml"
-      style="font-family:Arial,'Microsoft YaHei';color:#cbd5e1;font-size:${Math.max(18, w * 0.025)}px;line-height:1.55;">
-      ${safePrompt}
-    </div>
-  </foreignObject>
-  <text x="${w * 0.12}" y="${h * 0.82}" fill="#9aa4b6" font-size="${Math.max(16, w * 0.02)}" font-family="Arial, Microsoft YaHei">
-    ${escapeXml(now)} · ${w}x${h}
-  </text>
-</svg>`;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
 function setStatus(message, type = "info") {
   if (!statusText) return;
 
@@ -434,24 +356,6 @@ function normalizeBaseUrl(url) {
   return String(url || "").replace(/\/+$/, "");
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
-}
-
-function truncate(text, length) {
-  if (text.length <= length) return text;
-  return `${text.slice(0, length)}...`;
-}
-
-function escapeXml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
 }

@@ -75,7 +75,6 @@
 		disabled
                 aria-disabled="true"
               />
-  	      <p class="hint">API Base URL 已锁定为 https://api.xuai.chat</p>
             </div>
 
             <div class="field-row">
@@ -89,9 +88,6 @@
                 />
                 <button id="toggleKeyBtn" type="button">显示</button>
               </div>
-              <p class="hint danger">
-                请勿把真实 API Key 写进代码或提交到 GitHub。
-              </p>
             </div>
 
             <div class="field-row inline">
@@ -173,13 +169,6 @@
               </div>
             </div>
 
-            <div class="field-row checkbox-row">
-              <label class="checkbox">
-                <input id="demoMode" type="checkbox" checked />
-                <span>演示模式：不调用真实 API，生成占位预览图</span>
-              </label>
-            </div>
-
             <button id="generateBtn" class="primary-btn" type="submit">
               生成图片
             </button>
@@ -196,10 +185,10 @@
           </div>
 
           <div class="api-info">
-            <span id="apiModeBadge">演示模式</span>
+            <span id="apiModeBadge">真实 API</span>
             <strong id="apiInfoTitle">当前使用 gpt-image-2</strong>
             <p id="apiInfoDesc">
-              默认演示模式不会消耗额度。关闭演示模式并填写 API Key 后可尝试真实调用。
+              当前会调用 XuAI API 站生成图片。
             </p>
           </div>
 
