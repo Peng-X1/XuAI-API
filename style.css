@@ -17,6 +17,17 @@
   --radius: 22px;
 }
 
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+}
+
+input[readonly] {
+  cursor: not-allowed;
+}
+
 * {
   box-sizing: border-box;
 }

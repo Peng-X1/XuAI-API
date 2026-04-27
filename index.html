@@ -60,11 +60,10 @@
           <form id="imageForm" class="form">
             <div class="field-row">
               <label>提供商预设</label>
-              <select id="provider">
-                <option value="openai">OpenAI 官方</option>
-                <option value="zetatechs">ZetaTechs Enterprise</option>
-                <option value="custom">自定义接口</option>
+              <select id="provider" disabled aria-disabled="true">
+                <option value="xuai" selected>XuAI API 中转站</option>
               </select>
+              <p class="hint">提供商已锁定为 XuAI API 中转站，用户不可修改。</p>
             </div>
 
             <div class="field-row">
@@ -72,8 +71,12 @@
               <input
                 id="apiBase"
                 type="text"
-                placeholder="例如：https://api.openai.com/v1"
+                value="https://api.xuai.chat"
+                readonly
+		disabled
+                aria-disabled="true"
               />
+  	      <p class="hint">API Base URL 已锁定为 https://api.xuai.chat</p>
             </div>
 
             <div class="field-row">

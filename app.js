@@ -1,15 +1,11 @@
+const FIXED_PROVIDER_ID = "xuai";
+const FIXED_PROVIDER_NAME = "XuAI API 中转站";
+const FIXED_API_BASE = "https://api.xuai.chat";
+
 const providerPresets = {
-  openai: {
-    name: "OpenAI 官方",
-    base: "https://api.openai.com/v1",
-  },
-  zetatechs: {
-    name: "ZetaTechs Enterprise",
-    base: "https://api.zetatechs.com/v1",
-  },
-  custom: {
-    name: "自定义接口",
-    base: "",
+  xuai: {
+    name: FIXED_PROVIDER_NAME,
+    base: FIXED_API_BASE,
   },
 };
 
@@ -48,11 +44,16 @@ function init() {
     themeBtn.textContent = "☀️";
   }
 
-  const savedProvider = localStorage.getItem("xuai-provider") || "openai";
-  provider.value = savedProvider;
+  // 固定提供商和 API Base URL，不再读取 localStorage
+  localStorage.removeItem("xuai-provider");
+  localStorage.removeItem("xuai-api-base");
 
-  const savedApiBase = localStorage.getItem("xuai-api-base");
-  apiBase.value = savedApiBase || providerPresets[savedProvider].base;
+  provider.value = FIXED_PROVIDER_ID;
+  apiBase.value = FIXED_API_BASE;
+
+  provider.disabled = true;
+  apiBase.readOnly = true;
+  apiBase.disabled = true;
 
   const savedModel = localStorage.getItem("xuai-model") || "gpt-image-2";
   setModel(savedModel);
@@ -68,23 +69,9 @@ function bindEvents() {
     localStorage.setItem("xuai-theme", isLight ? "light" : "dark");
     themeBtn.textContent = isLight ? "☀️" : "🌙";
   });
-
-  provider.addEventListener("change", () => {
-    const selected = provider.value;
-    localStorage.setItem("xuai-provider", selected);
-
-    if (selected !== "custom") {
-      apiBase.value = providerPresets[selected].base;
-      localStorage.setItem("xuai-api-base", apiBase.value);
-    }
-
-    updateApiInfo();
-  });
-
-  apiBase.addEventListener("input", () => {
-    localStorage.setItem("xuai-api-base", apiBase.value.trim());
-    updateApiInfo();
-  });
+  // 锁定提供商和 API Base URL
+  provider.addEventListener("change", lockProviderSettings);
+  apiBase.addEventListener("input", lockProviderSettings);
 
   toggleKeyBtn.addEventListener("click", () => {
     const isPassword = apiKey.type === "password";
@@ -105,6 +92,15 @@ function bindEvents() {
   demoMode.addEventListener("change", updateApiInfo);
 
   form.addEventListener("submit", handleGenerate);
+}
+
+function lockProviderSettings() {
+  provider.value = FIXED_PROVIDER_ID;
+  apiBase.value = FIXED_API_BASE;
+
+  provider.disabled = true;
+  apiBase.readOnly = true;
+  apiBase.disabled = true;
 }
 
 function setModel(model) {
@@ -132,7 +128,7 @@ function updateApiInfo() {
       "默认演示模式不会消耗额度，会在前端生成占位预览图，用来测试页面和 GitHub Pages 部署。";
   } else {
     apiInfoDesc.textContent =
-      "真实 API 模式会尝试调用 API Base URL 下的 /images/generations 接口。请注意静态网页暴露 API Key 的风险。";
+      `真实 API 模式会调用 ${FIXED_API_BASE}/images/generations。提供商和 API Base URL 已锁定为 XuAI API 中转站。`;
   }
 }
 
@@ -144,7 +140,17 @@ async function handleGenerate(event) {
   const size = sizeSelect.value;
   const quality = qualitySelect.value;
   const count = clamp(Number(countInput.value || 1), 1, 4);
-  const baseURL = normalizeBaseUrl(apiBase.value.trim());
+  // 强制锁定 API Base URL
+  lockProviderSettings();
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
+  const key = apiKey.value.trim();
+  if (!prompt) {
+    setStatus("请先输入 Prompt。", "warning");
+    promptInput.focus();
+    return;
+  }
+  lockProviderSettings();
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const key = apiKey.value.trim();
 
   if (!prompt) {
