@@ -8,7 +8,7 @@ const GPT54_MODEL = "gpt-5.4";
 const RESPONSES_IMAGE_MODELS = new Set([GPT54_MODEL]);
 
 // gpt-5.4 模型不显示/不允许这些尺寸。
-// 你之前说的 2024*2048，HTML 里实际是 2048x2048，这里按 2048x2048 处理。
+// 用户之前说的 2024*2048，HTML 里实际是 2048x2048，这里按 2048x2048 处理。
 const GPT54_DISABLED_SIZES = new Set([
   "1024x1024",
   "2048x2048",
@@ -45,6 +45,19 @@ const apiInfoDesc = $("#apiInfoDesc");
 const gallery = $("#gallery");
 const debugBox = $("#debugBox");
 const themeBtn = $("#themeBtn");
+
+// 生成中提示框相关 DOM。
+// 如果 index.html 暂时没加这些节点，下面变量会是 null，不会报错，只是不显示提示框。
+const generationNotice = $("#generationNotice");
+const generationNoticeIcon = $("#generationNoticeIcon");
+const generationNoticeTitle = $("#generationNoticeTitle");
+const generationNoticeDesc = $("#generationNoticeDesc");
+const generationModelName = $("#generationModelName");
+const generationTimer = $("#generationTimer");
+
+let isGeneratingImage = false;
+let generationStartTime = 0;
+let generationTimerId = null;
 
 // 缓存原始尺寸选项，用于模型切换时恢复。
 // 如果 index.html 中 option 写了 data-hide-for="gpt-5.4"，这里会读取。
@@ -146,6 +159,8 @@ function bindEvents() {
   if (form) {
     form.addEventListener("submit", handleGenerate);
   }
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
 }
 
 function lockProviderSettings() {
@@ -302,12 +317,10 @@ function applySizeOptionsForModel(model) {
   sizeSelect.innerHTML = "";
 
   const options = ORIGINAL_SIZE_OPTIONS.filter((option) => {
-    // 优先按 HTML 上的 data-hide-for 判断。
     if (shouldHideForModel(option, model)) {
       return false;
     }
 
-    // 兜底：即使 HTML 没加 data-hide-for，gpt-5.4 也隐藏这些尺寸。
     if (isGpt54Model(model) && GPT54_DISABLED_SIZES.has(option.value)) {
       return false;
     }
@@ -339,12 +352,10 @@ function applyFormatOptionsForModel(model) {
     document.querySelector('input[name="format"]:checked')?.value || "png";
 
   const options = ORIGINAL_FORMAT_OPTIONS.filter((option) => {
-    // 优先按 HTML 上的 data-hide-for 判断。
     if (shouldHideForModel(option, model)) {
       return false;
     }
 
-    // 兜底：即使 HTML 没加 data-hide-for，gpt-5.4 也只保留 PNG。
     if (isGpt54Model(model) && !GPT54_ALLOWED_FORMATS.has(option.value)) {
       return false;
     }
@@ -400,8 +411,6 @@ async function handleGenerate(event) {
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const key = apiKey?.value.trim() || "";
 
-  // 防御性处理：
-  // 即使用户通过控制台强行改 DOM，gpt-5.4 也不提交被禁用的尺寸和格式。
   if (isGpt54Model(model)) {
     if (GPT54_DISABLED_SIZES.has(size)) {
       console.warn(`gpt-5.4 不允许尺寸 ${size}，已自动改为 auto`);
@@ -438,6 +447,8 @@ async function handleGenerate(event) {
     debugBox.textContent = "";
   }
 
+  startGenerationIndicator(model);
+
   console.log("准备发送的生成参数：", {
     model,
     size,
@@ -470,9 +481,19 @@ async function handleGenerate(event) {
 
     showDebug(result.raw);
 
+    finishGenerationIndicator(
+      "success",
+      `模型 ${model} 已完成图片生成。`
+    );
+
     setStatus("图片生成完成。", "success");
   } catch (error) {
     console.error(error);
+
+    finishGenerationIndicator(
+      "error",
+      error.message || "生成失败，请查看控制台或下方调试信息。"
+    );
 
     setStatus(error.message || "生成失败，请查看控制台。", "error");
 
@@ -667,7 +688,8 @@ async function callResponsesImageApi({
       input: prompt,
       tools: [imageTool],
 
-      // 尽量强制模型调用图片工具，避免只返回文字
+      // 尽量让 Responses API 直接调用图片工具，避免只返回一段文字。
+      // 如果你的中转站不支持 tool_choice，出现 400 时可以删除这一行。
       tool_choice: "required",
     };
 
@@ -805,6 +827,7 @@ async function waitForResponsesImageResult({
     const message = `图片仍在生成中，正在轮询结果 ${pollAttempts}/${RESPONSES_MAX_POLL_ATTEMPTS}...`;
     console.log(message);
     setStatus(message, "loading");
+    updateGenerationIndicatorDesc(message);
 
     await delay(RESPONSES_POLL_INTERVAL_MS);
 
@@ -1269,6 +1292,131 @@ function redactLargeImageData(value, seen = new WeakSet()) {
   }
 
   return value;
+}
+
+function handleBeforeUnload(event) {
+  if (!isGeneratingImage) return;
+
+  event.preventDefault();
+  event.returnValue = "";
+}
+
+function startGenerationIndicator(model) {
+  isGeneratingImage = true;
+  generationStartTime = Date.now();
+
+  if (generationTimerId) {
+    clearInterval(generationTimerId);
+    generationTimerId = null;
+  }
+
+  if (generationNotice) {
+    generationNotice.hidden = false;
+    generationNotice.classList.remove("success", "error");
+    generationNotice.classList.add("loading");
+  }
+
+  if (generationNoticeIcon) {
+    generationNoticeIcon.textContent = "!";
+  }
+
+  if (generationNoticeTitle) {
+    generationNoticeTitle.textContent =
+      "正在生成图片，请不要刷新页面或关闭当前标签页。";
+  }
+
+  if (generationNoticeDesc) {
+    generationNoticeDesc.textContent =
+      "生成任务正在处理中，结果准备好后会显示在下方。";
+  }
+
+  if (generationModelName) {
+    generationModelName.textContent = `生成模型：${model}`;
+  }
+
+  updateGenerationTimer();
+
+  generationTimerId = setInterval(updateGenerationTimer, 1000);
+}
+
+function finishGenerationIndicator(type = "success", message = "") {
+  const elapsed = generationStartTime ? Date.now() - generationStartTime : 0;
+
+  isGeneratingImage = false;
+
+  if (generationTimerId) {
+    clearInterval(generationTimerId);
+    generationTimerId = null;
+  }
+
+  if (!generationNotice) return;
+
+  generationNotice.hidden = false;
+  generationNotice.classList.remove("loading", "success", "error");
+  generationNotice.classList.add(type === "error" ? "error" : "success");
+
+  if (type === "error") {
+    if (generationNoticeIcon) {
+      generationNoticeIcon.textContent = "!";
+    }
+
+    if (generationNoticeTitle) {
+      generationNoticeTitle.textContent = "图片生成失败。";
+    }
+
+    if (generationNoticeDesc) {
+      generationNoticeDesc.textContent =
+        message || "生成过程中发生错误，请查看下方调试信息。";
+    }
+  } else {
+    if (generationNoticeIcon) {
+      generationNoticeIcon.textContent = "✓";
+    }
+
+    if (generationNoticeTitle) {
+      generationNoticeTitle.textContent = "图片生成完成。";
+    }
+
+    if (generationNoticeDesc) {
+      generationNoticeDesc.textContent =
+        message || "图片已经生成完成，结果已显示在下方。";
+    }
+  }
+
+  if (generationTimer) {
+    generationTimer.textContent = `总用时 ${formatElapsedTime(elapsed)}`;
+  }
+}
+
+function updateGenerationIndicatorDesc(message) {
+  if (!generationNoticeDesc || !message) return;
+
+  generationNoticeDesc.textContent = message;
+}
+
+function updateGenerationTimer() {
+  if (!generationTimer || !generationStartTime) return;
+
+  const elapsed = Date.now() - generationStartTime;
+  generationTimer.textContent = `已用时 ${formatElapsedTime(elapsed)}`;
+}
+
+function formatElapsedTime(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const mm = String(minutes).padStart(2, "0");
+  const ss = String(seconds).padStart(2, "0");
+
+  if (hours > 0) {
+    const hh = String(hours).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  return `${mm}:${ss}`;
 }
 
 async function safeJson(response) {
