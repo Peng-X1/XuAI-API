@@ -2,13 +2,6 @@ const FIXED_PROVIDER_ID = "xuai";
 const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
-const providerPresets = {
-  xuai: {
-    name: FIXED_PROVIDER_NAME,
-    base: FIXED_API_BASE,
-  },
-};
-
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
@@ -38,22 +31,15 @@ const themeBtn = $("#themeBtn");
 init();
 
 function init() {
+  console.log("XuAI app.js 已加载");
+
   const savedTheme = localStorage.getItem("xuai-theme");
   if (savedTheme === "light") {
     document.body.classList.add("light");
-    themeBtn.textContent = "☀️";
+    if (themeBtn) themeBtn.textContent = "☀️";
   }
 
-  // 固定提供商和 API Base URL，不再读取 localStorage
-  localStorage.removeItem("xuai-provider");
-  localStorage.removeItem("xuai-api-base");
-
-  provider.value = FIXED_PROVIDER_ID;
-  apiBase.value = FIXED_API_BASE;
-
-  provider.disabled = true;
-  apiBase.readOnly = true;
-  apiBase.disabled = true;
+  lockProviderSettings();
 
   const savedModel = localStorage.getItem("xuai-model") || "gpt-image-2";
   setModel(savedModel);
@@ -63,21 +49,30 @@ function init() {
 }
 
 function bindEvents() {
-  themeBtn.addEventListener("click", () => {
-    document.body.classList.toggle("light");
-    const isLight = document.body.classList.contains("light");
-    localStorage.setItem("xuai-theme", isLight ? "light" : "dark");
-    themeBtn.textContent = isLight ? "☀️" : "🌙";
-  });
-  // 锁定提供商和 API Base URL
-  provider.addEventListener("change", lockProviderSettings);
-  apiBase.addEventListener("input", lockProviderSettings);
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      document.body.classList.toggle("light");
+      const isLight = document.body.classList.contains("light");
+      localStorage.setItem("xuai-theme", isLight ? "light" : "dark");
+      themeBtn.textContent = isLight ? "☀️" : "🌙";
+    });
+  }
 
-  toggleKeyBtn.addEventListener("click", () => {
-    const isPassword = apiKey.type === "password";
-    apiKey.type = isPassword ? "text" : "password";
-    toggleKeyBtn.textContent = isPassword ? "隐藏" : "显示";
-  });
+  if (provider) {
+    provider.addEventListener("change", lockProviderSettings);
+  }
+
+  if (apiBase) {
+    apiBase.addEventListener("input", lockProviderSettings);
+  }
+
+  if (toggleKeyBtn && apiKey) {
+    toggleKeyBtn.addEventListener("click", () => {
+      const isPassword = apiKey.type === "password";
+      apiKey.type = isPassword ? "text" : "password";
+      toggleKeyBtn.textContent = isPassword ? "隐藏" : "显示";
+    });
+  }
 
   $$(".model-card").forEach((card) => {
     card.addEventListener("click", () => {
@@ -85,28 +80,50 @@ function bindEvents() {
     });
   });
 
-  modelSelect.addEventListener("change", () => {
-    setModel(modelSelect.value);
-  });
+  if (modelSelect) {
+    modelSelect.addEventListener("change", () => {
+      setModel(modelSelect.value);
+    });
+  }
 
-  demoMode.addEventListener("change", updateApiInfo);
+  if (demoMode) {
+    demoMode.addEventListener("change", updateApiInfo);
+  }
 
-  form.addEventListener("submit", handleGenerate);
+  if (form) {
+    form.addEventListener("submit", handleGenerate);
+  }
 }
 
 function lockProviderSettings() {
-  provider.value = FIXED_PROVIDER_ID;
-  apiBase.value = FIXED_API_BASE;
+  localStorage.removeItem("xuai-provider");
+  localStorage.removeItem("xuai-api-base");
 
-  provider.disabled = true;
-  apiBase.readOnly = true;
-  apiBase.disabled = true;
+  if (provider) {
+    provider.innerHTML = `<option value="${FIXED_PROVIDER_ID}" selected>${FIXED_PROVIDER_NAME}</option>`;
+    provider.value = FIXED_PROVIDER_ID;
+    provider.disabled = true;
+  }
+
+  if (apiBase) {
+    apiBase.value = FIXED_API_BASE;
+    apiBase.readOnly = true;
+    apiBase.disabled = true;
+  }
 }
 
 function setModel(model) {
-  modelSelect.value = model;
-  currentModelText.textContent = model;
-  modelBadge.textContent = model;
+  if (!model) model = "gpt-image-2";
+
+  if (modelSelect) {
+    const exists = Array.from(modelSelect.options).some((option) => option.value === model);
+    if (exists) {
+      modelSelect.value = model;
+    }
+  }
+
+  if (currentModelText) currentModelText.textContent = model;
+  if (modelBadge) modelBadge.textContent = model;
 
   $$(".model-card").forEach((card) => {
     card.classList.toggle("active", card.dataset.model === model);
@@ -117,55 +134,61 @@ function setModel(model) {
 }
 
 function updateApiInfo() {
-  const model = modelSelect.value;
-  const isDemo = demoMode.checked;
+  const model = modelSelect?.value || "gpt-image-2";
+  const isDemo = demoMode?.checked;
 
-  apiModeBadge.textContent = isDemo ? "演示模式" : "真实 API";
-  apiInfoTitle.textContent = `当前使用 ${model}`;
+  if (apiModeBadge) {
+    apiModeBadge.textContent = isDemo ? "演示模式" : "真实 API";
+  }
 
-  if (isDemo) {
-    apiInfoDesc.textContent =
-      "默认演示模式不会消耗额度，会在前端生成占位预览图，用来测试页面和 GitHub Pages 部署。";
-  } else {
-    apiInfoDesc.textContent =
-      `真实 API 模式会调用 ${FIXED_API_BASE}/images/generations。提供商和 API Base URL 已锁定为 XuAI API 中转站。`;
+  if (apiInfoTitle) {
+    apiInfoTitle.textContent = `当前使用 ${model}`;
+  }
+
+  if (apiInfoDesc) {
+    if (isDemo) {
+      apiInfoDesc.textContent =
+        "当前为演示模式，不会调用真实 API，只会生成占位预览图。";
+    } else {
+      apiInfoDesc.textContent =
+        `真实 API 模式会调用 ${FIXED_API_BASE}/v1/images/generations。`;
+    }
   }
 }
 
 async function handleGenerate(event) {
   event.preventDefault();
 
-  const prompt = promptInput.value.trim();
-  const model = modelSelect.value;
-  const size = sizeSelect.value;
-  const quality = qualitySelect.value;
-  const count = clamp(Number(countInput.value || 1), 1, 4);
-  // 强制锁定 API Base URL
+  console.log("点击了生成图片按钮");
+
   lockProviderSettings();
+
+  const prompt = promptInput?.value.trim() || "";
+  const model = modelSelect?.value || "gpt-image-2";
+  const size = sizeSelect?.value || "1024x1024";
+  const quality = qualitySelect?.value || "auto";
+  const count = clamp(Number(countInput?.value || 1), 1, 4);
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const key = apiKey.value.trim();
-  if (!prompt) {
-    setStatus("请先输入 Prompt。", "warning");
-    promptInput.focus();
-    return;
-  }
-  lockProviderSettings();
-  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const key = apiKey.value.trim();
+  const key = apiKey?.value.trim() || "";
 
   if (!prompt) {
     setStatus("请先输入 Prompt。", "warning");
-    promptInput.focus();
+    promptInput?.focus();
     return;
   }
 
-  generateBtn.disabled = true;
-  generateBtn.textContent = "生成中...";
-  debugBox.classList.remove("show");
-  debugBox.textContent = "";
+  if (generateBtn) {
+    generateBtn.disabled = true;
+    generateBtn.textContent = "生成中...";
+  }
+
+  if (debugBox) {
+    debugBox.classList.remove("show");
+    debugBox.textContent = "";
+  }
 
   try {
-    if (demoMode.checked) {
+    if (demoMode?.checked) {
       setStatus("演示模式生成中...", "loading");
       await sleep(650);
 
@@ -188,15 +211,11 @@ async function handleGenerate(event) {
       return;
     }
 
-    if (!baseURL) {
-      throw new Error("请填写 API Base URL。");
-    }
-
     if (!key) {
-      throw new Error("请填写 API Key，或者重新开启演示模式。");
+      throw new Error("请填写 API Key，或者开启演示模式。");
     }
 
-    setStatus("正在调用真实 API...", "loading");
+    setStatus("正在调用 XuAI API 中转站...", "loading");
 
     const result = await callImageGenerationApi({
       baseURL,
@@ -215,17 +234,21 @@ async function handleGenerate(event) {
     });
 
     showDebug(result.raw);
-    setStatus("真实 API 调用完成。", "success");
+    setStatus("图片生成完成。", "success");
   } catch (error) {
     console.error(error);
     setStatus(error.message || "生成失败，请查看控制台。", "error");
+
     showDebug({
       error: error.message,
-      tip: "如果是浏览器 CORS 报错，说明该 API 不允许静态网页直接调用，需要增加后端代理。",
+      request_url: `${FIXED_API_BASE}/v1/images/generations`,
+      tip: "如果浏览器控制台显示 CORS 错误，需要在你的中转站配置跨域访问。",
     });
   } finally {
-    generateBtn.disabled = false;
-    generateBtn.textContent = "生成图片";
+    if (generateBtn) {
+      generateBtn.disabled = false;
+      generateBtn.textContent = "生成图片";
+    }
   }
 }
 
@@ -240,6 +263,8 @@ async function callImageGenerationApi({
 }) {
   const url = `${baseURL}/v1/images/generations`;
 
+  console.log("准备请求：", url);
+
   const payload = {
     model,
     prompt,
@@ -250,6 +275,8 @@ async function callImageGenerationApi({
   if (quality && quality !== "auto") {
     payload.quality = quality;
   }
+
+  console.log("请求参数：", payload);
 
   const response = await fetch(url, {
     method: "POST",
@@ -266,7 +293,9 @@ async function callImageGenerationApi({
     const message =
       raw?.error?.message ||
       raw?.message ||
+      raw?.raw ||
       `API 请求失败：HTTP ${response.status}`;
+
     throw new Error(message);
   }
 
@@ -282,7 +311,7 @@ async function callImageGenerationApi({
     .filter(Boolean);
 
   if (!images.length) {
-    throw new Error("API 返回成功，但没有找到图片 URL 或 base64 数据。");
+    throw new Error("API 返回成功，但没有找到图片 URL 或 base64 图片数据。");
   }
 
   return {
@@ -292,6 +321,8 @@ async function callImageGenerationApi({
 }
 
 function renderImages(images, meta) {
+  if (!gallery) return;
+
   gallery.classList.remove("empty");
 
   const html = `
@@ -363,6 +394,8 @@ function createDemoImage({ prompt, model, size, index }) {
 }
 
 function setStatus(message, type = "info") {
+  if (!statusText) return;
+
   statusText.textContent = message;
 
   const colorMap = {
@@ -377,8 +410,11 @@ function setStatus(message, type = "info") {
 }
 
 function showDebug(data) {
+  if (!debugBox) return;
+
   debugBox.textContent =
     typeof data === "string" ? data : JSON.stringify(data, null, 2);
+
   debugBox.classList.add("show");
 }
 
@@ -395,7 +431,7 @@ async function safeJson(response) {
 }
 
 function normalizeBaseUrl(url) {
-  return url.replace(/\/+$/, "");
+  return String(url || "").replace(/\/+$/, "");
 }
 
 function sleep(ms) {
@@ -413,9 +449,9 @@ function truncate(text, length) {
 
 function escapeXml(value) {
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
