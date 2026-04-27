@@ -984,3 +984,508 @@ body.light .generation-notice__meta span {
     font-size: 17px;
   }
 }
+
+/* =========================================================
+   Compact UI Override
+   让页面整体更精致、更紧凑，避免超宽屏下显得巨大
+   请放在 style.css 最后，覆盖前面的旧样式
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-size: 14px;
+}
+
+/* 顶部导航压缩 */
+.topbar {
+  min-height: 76px !important;
+  height: 76px !important;
+  padding: 0 clamp(24px, calc((100vw - 1480px) / 2 + 24px), 80px) !important;
+  gap: 28px !important;
+}
+
+.brand {
+  gap: 12px !important;
+  min-width: auto !important;
+}
+
+.brand-mark {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 7px !important;
+}
+
+.brand h1 {
+  font-size: 28px !important;
+  line-height: 1 !important;
+  letter-spacing: -0.04em !important;
+  margin: 0 !important;
+}
+
+.brand p {
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  margin-top: 6px !important;
+}
+
+.nav {
+  gap: 8px !important;
+}
+
+.nav-item {
+  font-size: 16px !important;
+  line-height: 1 !important;
+  padding: 11px 16px !important;
+  border-radius: 14px !important;
+}
+
+.toolbar {
+  gap: 10px !important;
+}
+
+.icon-btn {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  font-size: 18px !important;
+  border-radius: 999px !important;
+}
+
+/* 主体内容不要铺满超宽屏 */
+.main {
+  max-width: 1480px !important;
+  margin: 0 auto !important;
+  padding: 44px 32px 64px !important;
+}
+
+/* Hero 区域压缩 */
+.hero {
+  min-height: auto !important;
+  margin: 0 0 34px !important;
+  padding: 0 !important;
+  align-items: center !important;
+}
+
+.hero h2 {
+  font-size: clamp(44px, 4vw, 68px) !important;
+  line-height: 1.03 !important;
+  letter-spacing: -0.06em !important;
+  margin: 0 0 14px !important;
+}
+
+.hero p {
+  font-size: 20px !important;
+  line-height: 1.45 !important;
+  margin: 0 !important;
+}
+
+.batch-switch {
+  font-size: 16px !important;
+  gap: 12px !important;
+}
+
+.switch {
+  width: 56px !important;
+  height: 32px !important;
+}
+
+.switch i::before,
+.switch input + i::before {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* 工作区布局控制 */
+.workspace {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.12fr) minmax(420px, 0.88fr) !important;
+  gap: 24px !important;
+  align-items: start !important;
+}
+
+/* 面板整体压缩 */
+.panel {
+  border-radius: 24px !important;
+  padding: 28px !important;
+}
+
+/* 左侧控制面板 */
+.control-panel {
+  min-width: 0 !important;
+}
+
+.model-tabs {
+  padding: 8px !important;
+  gap: 8px !important;
+  border-radius: 18px !important;
+  margin-bottom: 26px !important;
+}
+
+.model-tabs button {
+  font-size: 18px !important;
+  line-height: 1 !important;
+  padding: 15px 18px !important;
+  border-radius: 14px !important;
+}
+
+.form {
+  gap: 22px !important;
+}
+
+.field-row {
+  gap: 10px !important;
+  margin-bottom: 20px !important;
+}
+
+.field-row > label,
+.field-row label:first-child {
+  font-size: 16px !important;
+  line-height: 1.3 !important;
+}
+
+.field-row.inline {
+  gap: 14px !important;
+  align-items: center !important;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  min-height: 48px !important;
+  padding: 12px 16px !important;
+  border-radius: 16px !important;
+}
+
+textarea {
+  min-height: 132px !important;
+  resize: vertical;
+}
+
+.key-wrap {
+  gap: 10px !important;
+}
+
+.key-wrap button {
+  height: 48px !important;
+  min-width: 86px !important;
+  padding: 0 18px !important;
+  font-size: 16px !important;
+  border-radius: 16px !important;
+}
+
+.radio {
+  font-size: 16px !important;
+  gap: 8px !important;
+}
+
+.radio input {
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 0 !important;
+}
+
+/* 模型卡片压缩 */
+.cards {
+  gap: 14px !important;
+}
+
+.model-card {
+  padding: 20px !important;
+  border-radius: 18px !important;
+}
+
+.model-card strong {
+  font-size: 20px !important;
+  line-height: 1.3 !important;
+}
+
+.model-card span {
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  margin-top: 8px !important;
+}
+
+/* 当前模型信息 */
+.current-model {
+  padding: 18px 20px !important;
+  border-radius: 18px !important;
+  margin: 20px 0 !important;
+}
+
+.current-model span {
+  font-size: 13px !important;
+}
+
+.current-model strong {
+  font-size: 22px !important;
+  line-height: 1.25 !important;
+}
+
+.current-model p {
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+
+/* 主按钮 */
+.primary-btn {
+  height: 52px !important;
+  font-size: 18px !important;
+  border-radius: 16px !important;
+}
+
+/* 右侧结果预览 */
+.preview-panel {
+  min-width: 0 !important;
+}
+
+.preview-head {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  margin-bottom: 22px !important;
+}
+
+.preview-head > div {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.preview-head h3 {
+  font-size: 32px !important;
+  line-height: 1.12 !important;
+  letter-spacing: -0.04em !important;
+  margin: 0 0 10px !important;
+}
+
+#statusText {
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+}
+
+#modelBadge.badge {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  height: auto !important;
+  min-height: 0 !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow-wrap: normal !important;
+
+  line-height: 1 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+
+/* API 信息框 */
+.api-info {
+  padding: 20px !important;
+  border-radius: 20px !important;
+  margin-bottom: 22px !important;
+}
+
+.api-info span {
+  font-size: 14px !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+}
+
+.api-info strong {
+  font-size: 20px !important;
+  line-height: 1.35 !important;
+  margin-top: 14px !important;
+}
+
+.api-info p {
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  margin-top: 8px !important;
+}
+
+/* 图片区域 */
+.gallery {
+  min-height: 420px !important;
+  border-radius: 22px !important;
+}
+
+.empty-state {
+  padding: 40px 28px !important;
+}
+
+.empty-badge {
+  font-size: 14px !important;
+  padding: 7px 13px !important;
+}
+
+.empty-state h4 {
+  font-size: 30px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.04em !important;
+  margin-top: 18px !important;
+}
+
+.empty-state p {
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+
+/* 生成提示框也压缩一点 */
+.generation-notice {
+  padding: 20px 22px !important;
+  border-radius: 20px !important;
+  gap: 16px !important;
+  margin: 20px 0 22px !important;
+}
+
+.generation-notice__icon-wrap {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.generation-notice__icon {
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 22px !important;
+}
+
+.generation-notice__top strong {
+  font-size: 18px !important;
+  line-height: 1.45 !important;
+}
+
+.generation-notice__content p {
+  font-size: 15px !important;
+  line-height: 1.65 !important;
+}
+
+.generation-notice__meta {
+  margin-top: 14px !important;
+  gap: 8px !important;
+}
+
+.generation-notice__meta span {
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  font-size: 14px !important;
+}
+
+/* 调试框 */
+.debug-box {
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  border-radius: 18px !important;
+  padding: 16px !important;
+}
+
+/* 结果图片卡片 */
+.result-grid {
+  gap: 18px !important;
+}
+
+.result-card {
+  border-radius: 18px !important;
+}
+
+.result-card footer {
+  padding: 12px 14px !important;
+}
+
+.result-card small,
+.result-card a {
+  font-size: 14px !important;
+}
+
+/* 超宽屏进一步限制，避免被拉得太散 */
+@media (min-width: 1800px) {
+  .main {
+    max-width: 1500px !important;
+  }
+
+  .hero h2 {
+    font-size: 64px !important;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1.08fr) minmax(420px, 0.92fr) !important;
+  }
+}
+
+/* 窄屏适配 */
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  .main {
+    padding: 32px 20px 48px !important;
+  }
+
+  .hero {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+  }
+
+  .hero h2 {
+    font-size: 46px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    height: auto !important;
+    min-height: 68px !important;
+    padding: 14px 18px !important;
+  }
+
+  .nav {
+    display: none !important;
+  }
+
+  .brand h1 {
+    font-size: 22px !important;
+  }
+
+  .brand p {
+    font-size: 12px !important;
+  }
+
+  .hero h2 {
+    font-size: 38px !important;
+  }
+
+  .hero p {
+    font-size: 16px !important;
+  }
+
+  .panel {
+    padding: 20px !important;
+  }
+
+  .preview-head h3 {
+    font-size: 26px !important;
+  }
+}
