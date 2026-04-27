@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XuAI API Studio</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <h1>XuAI API Studio</h1>
+          <p>Media Client</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active">图片生成</button>
+        <button class="nav-item">视频生成</button>
+        <button class="nav-item">音频工具</button>
+        <button class="nav-item">实时语音</button>
+        <button class="nav-item">文本模型</button>
+        <button class="nav-item">内容安全</button>
+        <button class="nav-item">历史记录</button>
+      </nav>
+
+      <div class="toolbar">
+        <button id="themeBtn" class="icon-btn" title="切换主题">🌙</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="hero">
+        <div>
+          <h2>图片生成</h2>
+          <p>使用 AI 模型生成和编辑高质量图片</p>
+        </div>
+
+        <div class="batch-switch">
+          <span class="active">单个</span>
+          <label class="switch">
+            <input id="batchToggle" type="checkbox" />
+            <i></i>
+          </label>
+          <span>批量</span>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel control-panel">
+          <div class="model-tabs">
+            <button>Nano Banana</button>
+            <button class="active">GPT-Image</button>
+            <button>Flux</button>
+          </div>
+
+          <form id="imageForm" class="form">
+            <div class="field-row">
+              <label>提供商预设</label>
+              <select id="provider">
+                <option value="openai">OpenAI 官方</option>
+                <option value="zetatechs">ZetaTechs Enterprise</option>
+                <option value="custom">自定义接口</option>
+              </select>
+            </div>
+
+            <div class="field-row">
+              <label>API Base URL</label>
+              <input
+                id="apiBase"
+                type="text"
+                placeholder="例如：https://api.openai.com/v1"
+              />
+            </div>
+
+            <div class="field-row">
+              <label>API Key</label>
+              <div class="key-wrap">
+                <input
+                  id="apiKey"
+                  type="password"
+                  autocomplete="off"
+                  placeholder="请在本地输入，不要提交到 GitHub"
+                />
+                <button id="toggleKeyBtn" type="button">显示</button>
+              </div>
+              <p class="hint danger">
+                请勿把真实 API Key 写进代码或提交到 GitHub。
+              </p>
+            </div>
+
+            <div class="field-row inline">
+              <label>模式</label>
+              <label class="radio">
+                <input type="radio" name="mode" value="generate" checked />
+                <span>生成</span>
+              </label>
+              <label class="radio">
+                <input type="radio" name="mode" value="edit" />
+                <span>编辑</span>
+              </label>
+            </div>
+
+            <div class="field-row">
+              <label>生成模型</label>
+              <div class="cards">
+                <button type="button" class="model-card active" data-model="gpt-image-2">
+                  <strong>gpt-image-2 生图</strong>
+                  <span>标准图片生成，沿用 Image API 参数体系。</span>
+                </button>
+
+                <button type="button" class="model-card" data-model="gpt-5.4-image">
+                  <strong>gpt-5.4 生图</strong>
+                  <span>预留模型位，后续可接入 Responses API。</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="current-model">
+              <span>当前模型</span>
+              <strong id="currentModelText">gpt-image-2</strong>
+              <p>标准图片生成，适合测试 Prompt、尺寸和风格。</p>
+            </div>
+
+            <div class="field-row">
+              <label for="model">模型</label>
+              <select id="model">
+                <option value="gpt-image-2">gpt-image-2</option>
+                <option value="gpt-image-1">gpt-image-1</option>
+                <option value="dall-e-3">dall-e-3</option>
+                <option value="gpt-5.4-image">gpt-5.4-image</option>
+              </select>
+            </div>
+
+            <div class="field-row">
+              <label for="prompt">提示词 Prompt</label>
+              <textarea
+                id="prompt"
+                rows="6"
+                placeholder="例如：一只戴着宇航头盔的橘猫，坐在未来城市屋顶，电影感灯光，超清细节"
+              ></textarea>
+            </div>
+
+            <div class="form-grid">
+              <div class="field-row">
+                <label for="size">尺寸</label>
+                <select id="size">
+                  <option value="1024x1024">1024 x 1024</option>
+                  <option value="1024x1536">1024 x 1536</option>
+                  <option value="1536x1024">1536 x 1024</option>
+                  <option value="512x512">512 x 512</option>
+                </select>
+              </div>
+
+              <div class="field-row">
+                <label for="quality">质量</label>
+                <select id="quality">
+                  <option value="auto">auto</option>
+                  <option value="standard">standard</option>
+                  <option value="hd">hd</option>
+                  <option value="high">high</option>
+                </select>
+              </div>
+
+              <div class="field-row">
+                <label for="count">数量</label>
+                <input id="count" type="number" min="1" max="4" value="1" />
+              </div>
+            </div>
+
+            <div class="field-row checkbox-row">
+              <label class="checkbox">
+                <input id="demoMode" type="checkbox" checked />
+                <span>演示模式：不调用真实 API，生成占位预览图</span>
+              </label>
+            </div>
+
+            <button id="generateBtn" class="primary-btn" type="submit">
+              生成图片
+            </button>
+          </form>
+        </aside>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h3>结果预览</h3>
+              <p id="statusText">等待生成，结果会显示在这里。</p>
+            </div>
+            <span id="modelBadge" class="badge">gpt-image-2</span>
+          </div>
+
+          <div class="api-info">
+            <span id="apiModeBadge">演示模式</span>
+            <strong id="apiInfoTitle">当前使用 gpt-image-2</strong>
+            <p id="apiInfoDesc">
+              默认演示模式不会消耗额度。关闭演示模式并填写 API Key 后可尝试真实调用。
+            </p>
+          </div>
+
+          <div id="gallery" class="gallery empty">
+            <div class="empty-state">
+              <div class="empty-badge">gpt-image-2</div>
+              <h4>gpt-image-2 结果会显示在这里</h4>
+              <p>填写 Prompt 后点击生成按钮。</p>
+            </div>
+          </div>
+
+          <pre id="debugBox" class="debug-box"></pre>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
