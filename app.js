@@ -1,4 +1,4 @@
-                                                     const FIXED_PROVIDER_ID = "xuai";
+const FIXED_PROVIDER_ID = "xuai";
 const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
@@ -17,7 +17,6 @@ const toggleKeyBtn = $("#toggleKeyBtn");
 const modelSelect = $("#model");
 const promptInput = $("#prompt");
 const sizeSelect = $("#size");
-const qualitySelect = $("#quality");    // 下拉框获取图片质量
 const countInput = $("#count");
 const generateBtn = $("#generateBtn");
 
@@ -231,7 +230,6 @@ async function handleGenerate(event) {
   const prompt = promptInput?.value.trim() || "";
   const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
   const size = sizeSelect?.value || "auto";
-  // 使用 querySelector 获取单选框选中的值
   const quality = document.querySelector('input[name="quality"]:checked')?.value || "auto";
   const background = document.querySelector('input[name="background"]:checked')?.value || "auto";
   const format = document.querySelector('input[name="format"]:checked')?.value || "png";
@@ -261,6 +259,8 @@ async function handleGenerate(event) {
     debugBox.textContent = "";
   }
 
+  console.log("准备发送的生成参数：", { size, quality, background, format });
+
   try {
     setStatus("正在调用 XuAI API 中转站...", "loading");
 
@@ -271,8 +271,8 @@ async function handleGenerate(event) {
       prompt,
       size,
       quality,
-      background,  // 新增
-      format,      // 新增
+      background,
+      format,
       count,
     });
 
@@ -311,6 +311,8 @@ async function callImageGenerationApi({
   prompt,
   size,
   quality,
+  background,
+  format,
   count,
 }) {
   model = normalizeModelName(model);
@@ -323,6 +325,8 @@ async function callImageGenerationApi({
       prompt,
       size,
       quality,
+      background,
+      format,
       count,
     });
   }
@@ -334,6 +338,8 @@ async function callImageGenerationApi({
     prompt,
     size,
     quality,
+    background,
+    format,
     count,
   });
 }
@@ -345,6 +351,8 @@ async function callImagesGenerationsApi({
   prompt,
   size,
   quality,
+  background,
+  format,
   count,
 }) {
   const url = `${baseURL}/v1/images/generations`;
@@ -354,28 +362,15 @@ async function callImagesGenerationsApi({
   const payload = {
     model,
     prompt,
-    size,
     n: count,
   };
 
-  if (quality && quality !== "auto") {
-    payload.quality = quality;
-  }
+  if (size && size !== "auto") payload.size = size;
+  if (quality && quality !== "auto") payload.quality = quality;
+  if (background && background !== "auto") payload.background = background;
+  if (format && format !== "png") payload.response_format = format;
 
-  if (quality && quality !== "auto") {
-    payload.quality = quality;
-  }
-
-  // 新增背景和格式参数构建
-  if (background && background !== "auto") {
-    payload.background = background;
-  }
-
-  if (format && format !== "png") {
-    payload.response_format = format;
-  }
-
-  console.log("Images API 请求参数：", payload);
+  console.log("Images API 请求参数（最终发给大模型的 payload）：", payload);
 
   const response = await fetch(url, {
     method: "POST",
@@ -420,6 +415,8 @@ async function callResponsesImageApi({
   prompt,
   size,
   quality,
+  background,
+  format,
   count,
 }) {
   const url = `${baseURL}/v1/responses`;
@@ -429,32 +426,16 @@ async function callResponsesImageApi({
   const images = [];
   const raws = [];
 
-  /**
-   * Responses API 通常没有 n 参数。
-   * 如果数量大于 1，这里用多次请求实现。
-   */
   for (let i = 0; i < count; i++) {
     const imageTool = {
       type: "image_generation",
     };
 
-    if (size) {
-      imageTool.size = size;
-    }
+    if (size && size !== "auto") imageTool.size = size;
+    if (quality && quality !== "auto") imageTool.quality = quality;
+    if (background && background !== "auto") imageTool.background = background;
+    if (format && format !== "png") imageTool.response_format = format;
 
-    if (quality && quality !== "auto") {
-      imageTool.quality = quality;
-    }
-
-    // 新增背景和格式
-    if (background && background !== "auto") {
-      imageTool.background = background;
-    }
-    
-    if (format && format !== "png") {
-      imageTool.response_format = format;
-    }
-    
     const payload = {
       model,
       input: prompt,
