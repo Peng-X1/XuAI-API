@@ -1419,21 +1419,27 @@ function updateGenerationTimer() {
 }
 
 function formatElapsedTime(milliseconds) {
-  const totalSecondsFloat = Math.max(0, milliseconds / 1000);
+  const totalCentiseconds = Math.max(0, Math.floor(milliseconds / 10));
 
-  const hours = Math.floor(totalSecondsFloat / 3600);
-  const minutes = Math.floor((totalSecondsFloat % 3600) / 60);
-  const secondsFloat = totalSecondsFloat % 60;
+  const centiseconds = totalCentiseconds % 100;
+  const totalSeconds = Math.floor(totalCentiseconds / 100);
 
+  const seconds = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+
+  const minutes = totalMinutes % 60;
+  const hours = Math.floor(totalMinutes / 60);
+
+  const cs = String(centiseconds).padStart(2, "0");
+  const ss = String(seconds).padStart(2, "0");
   const mm = String(minutes).padStart(2, "0");
-  const ss = secondsFloat.toFixed(2).padStart(5, "0");
 
   if (hours > 0) {
     const hh = String(hours).padStart(2, "0");
-    return `${hh}:${mm}:${ss}`;
+    return `${hh}:${mm}:${ss}.${cs}`;
   }
 
-  return `${mm}:${ss}`;
+  return `${mm}:${ss}.${cs}`;
 }
 
 async function safeJson(response) {
