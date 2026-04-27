@@ -3,8 +3,20 @@ const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
+const GPT54_MODEL = "gpt-5.4";
 
-const RESPONSES_IMAGE_MODELS = new Set(["gpt-5.4"]);
+const RESPONSES_IMAGE_MODELS = new Set([GPT54_MODEL]);
+
+// gpt-5.4 模型不显示这些尺寸
+// 用户说的 2024*2048，HTML 里实际是 2048x2048，这里按 2048x2048 处理
+const GPT54_DISABLED_SIZES = new Set([
+  "1024x1024",
+  "2048x2048",
+  "2160x3840",
+]);
+
+// gpt-5.4 只允许 PNG
+const GPT54_ALLOWED_FORMATS = new Set(["png"]);
 
 // Responses API 图片生成可能会先返回 generating 状态，这里做轮询
 const RESPONSES_POLL_INTERVAL_MS = 3000;
@@ -33,6 +45,30 @@ const apiInfoDesc = $("#apiInfoDesc");
 const gallery = $("#gallery");
 const debugBox = $("#debugBox");
 const themeBtn = $("#themeBtn");
+
+// 缓存原始尺寸选项，用于模型切换时恢复
+const ORIGINAL_SIZE_OPTIONS = sizeSelect
+  ? Array.from(sizeSelect.options).map((option) => ({
+      value: option.value,
+      text: option.textContent,
+      disabled: option.disabled,
+    }))
+  : [];
+
+// 缓存原始输出格式选项，用于模型切换时恢复
+const formatFieldRow = document
+  .querySelector('input[name="format"]')
+  ?.closest(".field-row");
+
+const ORIGINAL_FORMAT_OPTIONS = $$('input[name="format"]').map((input) => {
+  const label = input.closest("label.radio");
+
+  return {
+    value: input.value,
+    checked: input.checked,
+    labelHTML: label ? label.outerHTML : "",
+  };
+});
 
 init();
 
@@ -191,6 +227,8 @@ function setModel(model) {
     card.classList.toggle("active", cardModel === model);
   });
 
+  applyModelUiRestrictions(model);
+
   localStorage.setItem("xuai-model", model);
 
   updateApiInfo();
@@ -222,6 +260,87 @@ function updateApiInfo() {
   }
 }
 
+function isGpt54Model(model) {
+  return normalizeModelName(model) === GPT54_MODEL;
+}
+
+function applyModelUiRestrictions(model) {
+  model = normalizeModelName(model);
+
+  applySizeOptionsForModel(model);
+  applyFormatOptionsForModel(model);
+}
+
+function applySizeOptionsForModel(model) {
+  if (!sizeSelect) return;
+
+  const currentValue = sizeSelect.value;
+
+  sizeSelect.innerHTML = "";
+
+  const options = ORIGINAL_SIZE_OPTIONS.filter((option) => {
+    if (isGpt54Model(model)) {
+      return !GPT54_DISABLED_SIZES.has(option.value);
+    }
+
+    return true;
+  });
+
+  options.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.value;
+    option.textContent = item.text;
+    option.disabled = item.disabled;
+    sizeSelect.appendChild(option);
+  });
+
+  const values = options.map((item) => item.value);
+
+  if (values.includes(currentValue)) {
+    sizeSelect.value = currentValue;
+  } else {
+    sizeSelect.value = values.includes("auto") ? "auto" : values[0] || "";
+  }
+}
+
+function applyFormatOptionsForModel(model) {
+  if (!formatFieldRow) return;
+
+  const currentValue =
+    document.querySelector('input[name="format"]:checked')?.value || "png";
+
+  const options = ORIGINAL_FORMAT_OPTIONS.filter((option) => {
+    if (isGpt54Model(model)) {
+      return GPT54_ALLOWED_FORMATS.has(option.value);
+    }
+
+    return true;
+  });
+
+  formatFieldRow.innerHTML = `
+    <label>输出格式</label>
+    ${options.map((option) => option.labelHTML).join("")}
+  `;
+
+  const allowedValues = options.map((option) => option.value);
+
+  let nextValue = currentValue;
+
+  if (!allowedValues.includes(nextValue)) {
+    nextValue = "png";
+  }
+
+  const inputs = Array.from(
+    formatFieldRow.querySelectorAll('input[name="format"]')
+  );
+
+  const targetInput = inputs.find((input) => input.value === nextValue);
+
+  if (targetInput) {
+    targetInput.checked = true;
+  }
+}
+
 async function handleGenerate(event) {
   event.preventDefault();
 
@@ -231,16 +350,34 @@ async function handleGenerate(event) {
 
   const prompt = promptInput?.value.trim() || "";
   const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
-  const size = sizeSelect?.value || "auto";
+  let size = sizeSelect?.value || "auto";
+
   const quality =
     document.querySelector('input[name="quality"]:checked')?.value || "auto";
+
   const background =
     document.querySelector('input[name="background"]:checked')?.value || "auto";
-  const format =
+
+  let format =
     document.querySelector('input[name="format"]:checked')?.value || "png";
+
   const count = clamp(Number(countInput?.value || 1), 1, 4);
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const key = apiKey?.value.trim() || "";
+
+  // 防御性处理：
+  // 即使用户通过控制台强行改 DOM，gpt-5.4 也不提交被禁用的尺寸和格式
+  if (isGpt54Model(model)) {
+    if (GPT54_DISABLED_SIZES.has(size)) {
+      console.warn(`gpt-5.4 不允许尺寸 ${size}，已自动改为 auto`);
+      size = "auto";
+    }
+
+    if (!GPT54_ALLOWED_FORMATS.has(format)) {
+      console.warn(`gpt-5.4 不允许输出格式 ${format}，已自动改为 png`);
+      format = "png";
+    }
+  }
 
   console.log("页面读取到的质量 quality =", quality);
 
@@ -385,7 +522,7 @@ async function callImagesGenerationsApi({
   if (quality && quality !== "auto") payload.quality = quality;
   if (background && background !== "auto") payload.background = background;
 
-  // 对 gpt-image 系列，通常是 output_format。
+  // 对 gpt-image 系列通常是 output_format。
   // 如果你的中转站只接受 response_format，可以按实际情况改回去。
   if (format && format !== "png") payload.output_format = format;
 
@@ -483,8 +620,10 @@ async function callResponsesImageApi({
       imageTool.background = background;
     }
 
-    // Responses API 图片工具使用 output_format，不是 response_format
-    if (format) {
+    // gpt-5.4 只允许 PNG；Responses API 图片工具使用 output_format
+    if (isGpt54Model(model)) {
+      imageTool.output_format = "png";
+    } else if (format) {
       imageTool.output_format = format;
     }
 
@@ -534,16 +673,23 @@ async function callResponsesImageApi({
     const currentImages = extractImagesFromResponses(raw);
 
     if (!currentImages.length) {
+      const outputText = extractOutputTextFromResponses(raw);
+
       const error = new Error(
-        "Responses API 返回成功，但没有找到图片数据。请查看下方 request_payload 和 response。"
+        outputText
+          ? `模型没有生成图片，而是返回了文字：${outputText}`
+          : "Responses API 返回成功，但没有找到图片数据。请查看下方 request_payload 和 response。"
       );
 
       error.raw = {
         request_url: url,
         request_payload: payload,
         response: raw,
+        output_text: outputText || undefined,
         pending_image_call: hasPendingImageCall(raw),
-        tip: "如果 response.output 里 image_generation_call.status 仍是 generating，说明图片还没真正生成完成；如果 result 是空，则需要继续轮询或降低尺寸/质量。如果返回 file_id 或 sandbox:/mnt/data 路径，前端不能直接用 <img> 显示，需要服务端转换成公网 URL 或 base64。",
+        tip: outputText
+          ? "模型返回了文字说明，说明这次没有调用图片生成工具。通常是 Prompt 触发安全限制，或者模型判断不应生成图片。"
+          : "如果 response.output 里 image_generation_call.status 仍是 generating，说明图片还没真正生成完成；如果 result 是空，则需要继续轮询或降低尺寸/质量。如果返回 file_id 或 sandbox:/mnt/data 路径，前端不能直接用 <img> 显示，需要服务端转换成公网 URL 或 base64。",
       };
 
       throw error;
@@ -707,6 +853,32 @@ function getResponseQuality(raw) {
   );
 
   return imageCall?.quality || "";
+}
+
+function extractOutputTextFromResponses(raw) {
+  const texts = [];
+
+  if (Array.isArray(raw?.output)) {
+    raw.output.forEach((item) => {
+      if (item?.type === "message" && Array.isArray(item.content)) {
+        item.content.forEach((contentItem) => {
+          if (contentItem?.type === "output_text" && contentItem.text) {
+            texts.push(contentItem.text);
+          }
+        });
+      }
+
+      if (item?.type === "output_text" && item.text) {
+        texts.push(item.text);
+      }
+    });
+  }
+
+  if (typeof raw?.output_text === "string") {
+    texts.push(raw.output_text);
+  }
+
+  return texts.join("\n\n").trim();
 }
 
 function extractImagesFromResponses(raw) {
