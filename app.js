@@ -495,7 +495,8 @@ async function handleGenerate(event) {
       error.message || "生成失败，请查看控制台或下方调试信息。"
     );
 
-    setStatus(error.message || "生成失败，请查看控制台。", "error");
+    // setStatus(error.message || "生成失败，请查看控制台。", "error");
+    setStatus("图片生成失败，请查看下方提示和调试信息。", "error");
 
     showDebug(
       error.raw || {
@@ -1312,8 +1313,13 @@ function startGenerationIndicator(model) {
 
   if (generationNotice) {
     generationNotice.hidden = false;
-    generationNotice.classList.remove("success", "error");
-    generationNotice.classList.add("loading");
+    generationNotice.classList.remove(
+      "success",
+      "error",
+      "is-success",
+      "is-error"
+    );
+    generationNotice.classList.add("loading", "is-loading");
   }
 
   if (generationNoticeIcon) {
@@ -1327,7 +1333,7 @@ function startGenerationIndicator(model) {
 
   if (generationNoticeDesc) {
     generationNoticeDesc.textContent =
-      "生成任务正在处理中，结果准备好后会显示在下方。";
+      "生成任务已经提交，正在等待模型返回结果。大尺寸或高质量图片可能需要更长时间。";
   }
 
   if (generationModelName) {
@@ -1352,10 +1358,21 @@ function finishGenerationIndicator(type = "success", message = "") {
   if (!generationNotice) return;
 
   generationNotice.hidden = false;
-  generationNotice.classList.remove("loading", "success", "error");
-  generationNotice.classList.add(type === "error" ? "error" : "success");
+  generationNotice.classList.remove(
+    "loading",
+    "success",
+    "error",
+    "is-loading",
+    "is-success",
+    "is-error"
+  );
 
-  if (type === "error") {
+  const isError = type === "error";
+
+  generationNotice.classList.add(isError ? "error" : "success");
+  generationNotice.classList.add(isError ? "is-error" : "is-success");
+
+  if (isError) {
     if (generationNoticeIcon) {
       generationNoticeIcon.textContent = "!";
     }

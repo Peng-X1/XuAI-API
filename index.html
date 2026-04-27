@@ -258,21 +258,29 @@
             </p>
           </div>
 
-          <div id="generationNotice" class="generation-notice" hidden>
-            <div id="generationNoticeIcon" class="generation-notice-icon">!</div>
+          <div id="generationNotice" class="generation-notice" hidden aria-live="polite">
+            <div class="generation-notice__icon-wrap">
+              <span id="generationNoticeIcon" class="generation-notice__icon">!</span>
+            </div>
 
-            <div class="generation-notice-body">
-              <strong id="generationNoticeTitle">
-                正在生成图片，请不要刷新页面或关闭当前标签页。
-              </strong>
+            <div class="generation-notice__content">
+              <div class="generation-notice__top">
+                <strong id="generationNoticeTitle">
+                  正在生成图片，请不要刷新页面或关闭当前标签页。
+                </strong>
+              </div>
 
               <p id="generationNoticeDesc">
                 生成任务正在处理中，结果准备好后会显示在下方。
               </p>
 
-              <div class="generation-notice-meta">
+              <div class="generation-notice__meta">
                 <span id="generationModelName">生成模型：-</span>
                 <span id="generationTimer">已用时 00:00</span>
+              </div>
+
+              <div class="generation-notice__progress">
+                <i></i>
               </div>
             </div>
           </div>
