@@ -987,9 +987,7 @@ function ensureCustomModelCard(model, family, apiType) {
 
     const title = existingCard.querySelector("strong");
     if (title) {
-      const meta = getModelMeta(model);
-      const suffix = meta.discovered ? "可用" : "自定义";
-      title.textContent = `${model} ${suffix}`;
+      title.textContent = model;
     }
 
     const desc = existingCard.querySelector("span");
@@ -1010,11 +1008,8 @@ function ensureCustomModelCard(model, family, apiType) {
   card.dataset.customModel = "true";
   card.hidden = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL) !== family;
 
-  const meta = getModelMeta(model);
-  const suffix = meta.discovered ? "可用" : "自定义";
-
   const title = document.createElement("strong");
-  title.textContent = `${model} ${suffix}`;
+  title.textContent = model;
 
   const desc = document.createElement("span");
   desc.textContent = getCustomCardDescription(family, apiType);
@@ -1100,16 +1095,16 @@ function getCustomModelDescription(family, apiType) {
 
 function getCustomCardDescription(family, apiType) {
   if (family === "nano") {
-    return "自定义 Nano Banana 模型，会按 text + image 的 Chat Completions 请求发送。";
+    return "该 Nano Banana 模型会按 text + image 的 Chat Completions 请求发送。";
   }
 
   const label = getModelFamilyLabel(family);
 
   if (apiType === "responses") {
-    return `自定义 ${label} 模型，会按 Responses API 图片工具请求发送。`;
+    return `该 ${label} 模型会按 Responses API 图片工具请求发送。`;
   }
 
-  return `自定义 ${label} 模型，会按 Images API 图片生成请求发送。`;
+  return `该 ${label} 模型会按 Images API 图片生成请求发送。`;
 }
 
 function setModel(model) {
