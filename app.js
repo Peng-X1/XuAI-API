@@ -179,6 +179,7 @@ function init() {
   normalizeModelDom();
   restoreCustomImageModels();
   lockProviderSettings();
+  initApiConnectionUi();
 
   const savedModel = normalizeModelName(
     localStorage.getItem("xuai-model") || DEFAULT_IMAGE_MODEL
@@ -258,6 +259,45 @@ function lockProviderSettings() {
     apiBase.value = FIXED_API_BASE;
     apiBase.readOnly = true;
     apiBase.disabled = true;
+  }
+}
+
+function initApiConnectionUi() {
+  const providerRow = provider?.closest(".field-row");
+  const apiBaseRow = apiBase?.closest(".field-row");
+  const apiKeyRow = apiKey?.closest(".field-row");
+
+  if (providerRow) {
+    providerRow.classList.add("provider-row");
+    providerRow.hidden = true;
+  }
+
+  if (apiBaseRow && apiBase) {
+    apiBaseRow.classList.add("api-base-row", "form-row-horizontal");
+
+    let apiBaseWrap = apiBaseRow.querySelector(".api-base-wrap");
+
+    if (!apiBaseWrap) {
+      apiBaseWrap = document.createElement("div");
+      apiBaseWrap.className = "api-base-wrap";
+      apiBase.insertAdjacentElement("beforebegin", apiBaseWrap);
+      apiBaseWrap.appendChild(apiBase);
+    }
+
+    let apiBaseNote = apiBaseWrap.querySelector(".api-base-note");
+
+    if (!apiBaseNote) {
+      apiBaseNote = document.createElement("span");
+      apiBaseNote.className = "api-base-note";
+      apiBaseWrap.appendChild(apiBaseNote);
+    }
+
+    apiBaseNote.textContent = "无需修改";
+  }
+
+  if (apiKeyRow && apiKey) {
+    apiKeyRow.classList.add("api-key-row", "form-row-horizontal");
+    apiKey.placeholder = "填入个人APIKey";
   }
 }
 

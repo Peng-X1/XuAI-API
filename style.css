@@ -1995,23 +1995,26 @@ textarea {
 }
 
 .api-base-wrap {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
 
 .api-base-wrap #apiBase {
-  max-width: 420px;
+  width: 100%;
+  max-width: none;
   min-height: 38px !important;
   padding: 9px 14px !important;
 }
 
 .api-base-note {
-  flex: 0 0 auto;
+  width: 86px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 700;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -2026,12 +2029,17 @@ textarea {
   }
 
   .api-base-wrap {
+    grid-template-columns: 1fr;
     align-items: stretch;
-    flex-direction: column;
   }
 
   .api-base-wrap #apiBase {
     max-width: 100%;
+  }
+
+  .api-base-note {
+    width: auto;
+    text-align: left;
   }
 }
 
