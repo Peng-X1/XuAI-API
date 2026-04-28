@@ -2022,9 +2022,78 @@ textarea {
   min-width: 0;
 }
 
+.model-picker-row,
+.model-select-row,
+.prompt-row {
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 14px !important;
+  row-gap: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+.model-picker-row > label,
+.model-select-row > label,
+.prompt-row > label {
+  margin: 10px 0 0;
+  white-space: nowrap;
+}
+
+.model-picker-row > :not(label) {
+  grid-column: 2;
+}
+
+.model-select-row > select,
+.prompt-row > textarea {
+  grid-column: 2;
+}
+
+.model-picker-row .cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px !important;
+}
+
+.model-picker-row .model-card {
+  min-height: 76px !important;
+  padding: 12px 14px !important;
+}
+
+.model-picker-row .model-card strong {
+  font-size: 14px !important;
+  margin-bottom: 4px !important;
+}
+
+.model-picker-row .model-card span {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.prompt-row textarea {
+  min-height: 96px !important;
+}
+
 @media (max-width: 720px) {
   .api-base-row,
-  .api-key-row {
+  .api-key-row,
+  .model-picker-row,
+  .model-select-row,
+  .prompt-row {
+    grid-template-columns: 1fr;
+  }
+
+  .model-picker-row > label,
+  .model-select-row > label,
+  .prompt-row > label {
+    margin-top: 0;
+  }
+
+  .model-picker-row > :not(label),
+  .model-select-row > select,
+  .prompt-row > textarea {
+    grid-column: 1;
+  }
+
+  .model-picker-row .cards {
     grid-template-columns: 1fr;
   }
 
@@ -2046,7 +2115,7 @@ textarea {
 /* 绘图模型分组：前三个固定在第一行，其他分组排在后面 */
 .model-tabs {
   width: 100%;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
   gap: 6px !important;
   padding: 7px !important;
   margin-bottom: 18px !important;
@@ -2059,8 +2128,8 @@ textarea {
 }
 
 .model-tabs button {
-  min-height: 42px !important;
-  padding: 0 12px !important;
+  min-height: 38px !important;
+  padding: 0 8px !important;
   border: 1px solid transparent !important;
   border-radius: 12px !important;
   color: var(--muted) !important;
@@ -2092,6 +2161,48 @@ textarea {
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
+.model-picker-row .custom-model-panel {
+  padding: 10px !important;
+  margin-top: 8px !important;
+}
+
+.model-picker-row .custom-model-panel > label,
+.model-picker-row .custom-model-panel .hint {
+  display: none !important;
+}
+
+.model-picker-row .custom-model-row {
+  gap: 8px !important;
+}
+
+.model-picker-row .secondary-btn {
+  min-height: 38px !important;
+}
+
+.current-model {
+  display: grid !important;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px;
+  padding: 10px 14px !important;
+  margin: 0 !important;
+}
+
+.current-model span {
+  margin: 0 !important;
+}
+
+.current-model strong {
+  font-size: 15px !important;
+}
+
+.current-model p {
+  grid-column: 2;
+  margin: 2px 0 0 !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
 @media (max-width: 720px) {
   .model-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -2102,6 +2213,14 @@ textarea {
   .model-tabs button {
     min-height: 40px !important;
     font-size: 13px !important;
+  }
+
+  .current-model {
+    grid-template-columns: 1fr;
+  }
+
+  .current-model p {
+    grid-column: 1;
   }
 }
 
