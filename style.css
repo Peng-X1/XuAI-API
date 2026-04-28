@@ -2022,6 +2022,35 @@ textarea {
   min-width: 0;
 }
 
+.api-key-row #toggleKeyBtn {
+  width: 74px !important;
+  min-width: 74px !important;
+}
+
+.api-key-row #refreshModelsBtn {
+  width: 92px !important;
+  min-width: 92px !important;
+  border: 1px solid rgba(101, 232, 255, 0.34);
+  border-radius: 14px;
+  background: rgba(25, 183, 255, 0.1);
+  color: var(--primary-2);
+  font-size: 13px !important;
+  font-weight: 800;
+}
+
+.api-key-row #refreshModelsBtn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.model-sync-text {
+  grid-column: 2;
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .model-picker-row,
 .model-select-row,
 .prompt-row {
@@ -2109,6 +2138,10 @@ textarea {
   .api-base-note {
     width: auto;
     text-align: left;
+  }
+
+  .model-sync-text {
+    grid-column: 1;
   }
 }
 

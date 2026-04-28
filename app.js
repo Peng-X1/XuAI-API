@@ -199,6 +199,7 @@ const provider = $("#provider");
 const apiBase = $("#apiBase");
 const apiKey = $("#apiKey");
 const toggleKeyBtn = $("#toggleKeyBtn");
+const refreshModelsBtn = $("#refreshModelsBtn");
 const modelSelect = $("#model");
 const promptInput = $("#prompt");
 const sizeSelect = $("#size");
@@ -218,6 +219,7 @@ const emptyStateTitle = $(".empty-state h4");
 const emptyStateDesc = $(".empty-state p");
 const debugBox = $("#debugBox");
 const themeBtn = $("#themeBtn");
+const modelSyncText = $("#modelSyncText");
 const customModelInputs = $$("[data-custom-model-input]");
 const customModelAddBtns = $$("[data-custom-model-add]");
 
@@ -314,6 +316,20 @@ function bindEvents() {
 
       apiKey.type = isPassword ? "text" : "password";
       toggleKeyBtn.textContent = isPassword ? "隐藏" : "显示";
+    });
+  }
+
+  if (refreshModelsBtn) {
+    refreshModelsBtn.addEventListener("click", () => {
+      refreshAvailableImageModels();
+    });
+  }
+
+  if (apiKey) {
+    apiKey.addEventListener("change", () => {
+      if (apiKey.value.trim()) {
+        refreshAvailableImageModels();
+      }
     });
   }
 
@@ -601,6 +617,280 @@ function bindCustomModelEvents() {
   });
 }
 
+async function refreshAvailableImageModels() {
+  const key = apiKey?.value.trim() || "";
+
+  if (!key) {
+    setModelSyncStatus("请先填入个人 API Key。", "warning");
+    setStatus("请先填入个人 API Key。", "warning");
+    apiKey?.focus();
+    return;
+  }
+
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
+  const url = `${baseURL}/v1/models`;
+
+  setModelSyncStatus("正在刷新可用绘图模型...", "loading");
+  setStatus("正在读取当前 API Key 可用模型...", "loading");
+
+  if (refreshModelsBtn) {
+    refreshModelsBtn.disabled = true;
+    refreshModelsBtn.textContent = "刷新中";
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${key}`,
+      },
+    });
+
+    const raw = await safeJson(response);
+
+    if (!response.ok) {
+      const error = new Error(buildApiErrorMessage(raw, response, "Models API"));
+      error.raw = {
+        request_url: url,
+        response: raw,
+      };
+      throw error;
+    }
+
+    const modelNames = extractModelNamesFromModelsResponse(raw);
+    const registered = registerAvailableImageModels(modelNames);
+
+    showDebug({
+      request_url: url,
+      response: raw,
+      detected_image_models: registered.models,
+      detected_by_family: registered.byFamily,
+    });
+
+    if (!registered.total) {
+      const message = "没有从当前 API Key 的模型列表中识别到绘图模型。";
+      setModelSyncStatus(message, "warning");
+      setStatus(message, "warning");
+      return;
+    }
+
+    const activeFamily = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL);
+    applyModelFamilyUi(activeFamily, modelSelect?.value || DEFAULT_IMAGE_MODEL);
+
+    const message = `已刷新 ${registered.total} 个可用绘图模型。`;
+    setModelSyncStatus(message, "success");
+    setStatus(message, "success");
+  } catch (error) {
+    console.error(error);
+
+    const message = error.message || "刷新可用模型失败。";
+    setModelSyncStatus(message, "error");
+    setStatus("刷新可用模型失败，请查看调试信息。", "error");
+
+    showDebug(
+      error.raw || {
+        error: message,
+        request_url: url,
+      }
+    );
+  } finally {
+    if (refreshModelsBtn) {
+      refreshModelsBtn.disabled = false;
+      refreshModelsBtn.textContent = "刷新模型";
+    }
+  }
+}
+
+function extractModelNamesFromModelsResponse(raw) {
+  const values = [];
+
+  const pushModel = (value) => {
+    const model = normalizeModelName(value);
+    if (model) values.push(model);
+  };
+
+  const readItem = (item) => {
+    if (!item) return;
+
+    if (typeof item === "string") {
+      pushModel(item);
+      return;
+    }
+
+    if (typeof item === "object") {
+      pushModel(item.id || item.model || item.name || item.model_name);
+    }
+  };
+
+  if (Array.isArray(raw)) {
+    raw.forEach(readItem);
+  }
+
+  if (Array.isArray(raw?.data)) {
+    raw.data.forEach(readItem);
+  }
+
+  if (Array.isArray(raw?.models)) {
+    raw.models.forEach(readItem);
+  }
+
+  return uniqueArray(values);
+}
+
+function registerAvailableImageModels(modelNames) {
+  const byFamily = {};
+  const models = [];
+
+  modelNames.forEach((model) => {
+    const family = inferImageFamilyFromModelName(model);
+
+    if (!family) return;
+
+    registerAvailableImageModel({
+      model,
+      family,
+      apiType: CUSTOM_MODEL_FAMILY_CONFIG[family]?.apiType || "images",
+    });
+
+    models.push(model);
+    byFamily[family] = (byFamily[family] || 0) + 1;
+  });
+
+  return {
+    total: models.length,
+    models,
+    byFamily,
+  };
+}
+
+function registerAvailableImageModel({ model, family, apiType }) {
+  model = normalizeModelName(model);
+  family = normalizeCustomModelFamily(family);
+  apiType = normalizeCustomModelApiType(apiType, family);
+
+  if (!model) return;
+
+  const builtInMeta = MODEL_META[model];
+
+  if (!builtInMeta || builtInMeta.custom || builtInMeta.discovered) {
+    MODEL_META[model] = {
+      family,
+      title: model,
+      description: getAvailableModelDescription(family, apiType),
+      discovered: true,
+      apiType,
+    };
+  }
+
+  configureModelApiType(model, apiType);
+  ensureModelOption(model);
+  ensureCustomModelCard(model, family, apiType);
+}
+
+function configureModelApiType(model, apiType) {
+  if (apiType === "chat") {
+    GEMINI_IMAGE_MODELS.add(model);
+    CHAT_COMPLETIONS_IMAGE_MODELS.add(model);
+    RESPONSES_IMAGE_MODELS.delete(model);
+    return;
+  }
+
+  if (apiType === "responses") {
+    RESPONSES_IMAGE_MODELS.add(model);
+    GEMINI_IMAGE_MODELS.delete(model);
+    CHAT_COMPLETIONS_IMAGE_MODELS.delete(model);
+    return;
+  }
+
+  GEMINI_IMAGE_MODELS.delete(model);
+  CHAT_COMPLETIONS_IMAGE_MODELS.delete(model);
+  RESPONSES_IMAGE_MODELS.delete(model);
+}
+
+function inferImageFamilyFromModelName(model) {
+  const value = String(model || "").toLowerCase();
+
+  if (!isLikelyImageModelName(value)) return "";
+
+  if (value.includes("gemini") || value.includes("nano") || value.includes("banana")) {
+    return "nano";
+  }
+
+  if (value.includes("grok")) {
+    return "grok";
+  }
+
+  if (value.includes("flux")) {
+    return "flux";
+  }
+
+  if (
+    value.includes("doubao") ||
+    value.includes("seedream") ||
+    value.includes("seededit")
+  ) {
+    return "doubao";
+  }
+
+  if (value.includes("qwen-image") || value.includes("qianwen")) {
+    return "qianwen";
+  }
+
+  if (
+    value.includes("gpt-image") ||
+    value.includes("dall-e") ||
+    value.includes("dalle")
+  ) {
+    return "gpt";
+  }
+
+  return "";
+}
+
+function isLikelyImageModelName(model) {
+  const value = String(model || "").toLowerCase();
+
+  return (
+    value.includes("image") ||
+    value.includes("imagine") ||
+    value.includes("dall-e") ||
+    value.includes("dalle") ||
+    value.includes("flux") ||
+    value.includes("seedream") ||
+    value.includes("seededit")
+  );
+}
+
+function getAvailableModelDescription(family, apiType) {
+  const label = getModelFamilyLabel(family);
+
+  if (family === "nano") {
+    return `当前 API Key 可用的 ${label} 绘图模型，使用 Chat Completions 图片请求。`;
+  }
+
+  if (apiType === "responses") {
+    return `当前 API Key 可用的 ${label} 绘图模型，使用 Responses API 图片工具请求。`;
+  }
+
+  return `当前 API Key 可用的 ${label} 绘图模型，使用 Images API 图片生成请求。`;
+}
+
+function setModelSyncStatus(message, type = "info") {
+  if (!modelSyncText) return;
+
+  modelSyncText.textContent = message;
+
+  const colorMap = {
+    info: "",
+    loading: "var(--primary)",
+    success: "var(--success)",
+    warning: "var(--warning)",
+    error: "var(--danger)",
+  };
+
+  modelSyncText.style.color = colorMap[type] || "";
+}
+
 function addCustomModelFromControl(control) {
   const family = normalizeCustomModelFamily(control?.dataset.family);
   const config = CUSTOM_MODEL_FAMILY_CONFIG[family];
@@ -670,19 +960,7 @@ function registerCustomImageModel({ model, family, apiType, persist = false }) {
   };
 
   // apiType 决定自定义模型最终走哪套请求体。
-  if (apiType === "chat") {
-    GEMINI_IMAGE_MODELS.add(model);
-    CHAT_COMPLETIONS_IMAGE_MODELS.add(model);
-    RESPONSES_IMAGE_MODELS.delete(model);
-  } else if (apiType === "responses") {
-    RESPONSES_IMAGE_MODELS.add(model);
-    GEMINI_IMAGE_MODELS.delete(model);
-    CHAT_COMPLETIONS_IMAGE_MODELS.delete(model);
-  } else {
-    GEMINI_IMAGE_MODELS.delete(model);
-    CHAT_COMPLETIONS_IMAGE_MODELS.delete(model);
-    RESPONSES_IMAGE_MODELS.delete(model);
-  }
+  configureModelApiType(model, apiType);
 
   ensureModelOption(model);
   ensureCustomModelCard(model, family, apiType);
@@ -709,7 +987,9 @@ function ensureCustomModelCard(model, family, apiType) {
 
     const title = existingCard.querySelector("strong");
     if (title) {
-      title.textContent = `${model} 自定义`;
+      const meta = getModelMeta(model);
+      const suffix = meta.discovered ? "可用" : "自定义";
+      title.textContent = `${model} ${suffix}`;
     }
 
     const desc = existingCard.querySelector("span");
@@ -730,8 +1010,11 @@ function ensureCustomModelCard(model, family, apiType) {
   card.dataset.customModel = "true";
   card.hidden = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL) !== family;
 
+  const meta = getModelMeta(model);
+  const suffix = meta.discovered ? "可用" : "自定义";
+
   const title = document.createElement("strong");
-  title.textContent = `${model} 自定义`;
+  title.textContent = `${model} ${suffix}`;
 
   const desc = document.createElement("span");
   desc.textContent = getCustomCardDescription(family, apiType);
