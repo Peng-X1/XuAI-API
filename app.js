@@ -249,13 +249,17 @@ const ttsModelSyncText = $("#ttsModelSyncText");
 const historyList = $("#historyList");
 const historyStatusText = $("#historyStatusText");
 const clearHistoryBtn = $("#clearHistoryBtn");
+const historyFilters = $("#historyFilters");
 const HISTORY_STORAGE_KEY = "xuai-task-history";
+const HIDDEN_TOOL_MODEL_STORAGE_KEY = "xuai-hidden-tool-models";
+const HIDDEN_TOOL_MODELS = loadHiddenToolModels();
 
 let realtimePeerConnection = null;
 let realtimeDataChannel = null;
 let realtimeLocalStream = null;
 let toolApiKeyInputs = [];
 let toolModelRefreshBtns = [];
+let historyFilter = "all";
 
 // 生成中提示框相关 DOM。
 // 如果 index.html 暂时没加这些节点，不会报错，只是不显示提示框。
@@ -313,6 +317,7 @@ function init() {
   restoreCustomImageModels();
   lockProviderSettings();
   initSharedApiKeyInputs();
+  normalizeToolModelCards();
   initApiConnectionUi();
 
   const savedModel = normalizeModelName(
@@ -429,6 +434,26 @@ function bindEvents() {
   if (clearHistoryBtn) {
     clearHistoryBtn.addEventListener("click", clearHistory);
   }
+
+  historyFilters?.querySelectorAll("[data-history-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      historyFilter = button.dataset.historyFilter || "all";
+      renderHistory();
+    });
+  });
+
+  historyList?.addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-history-delete]");
+    if (deleteButton) {
+      deleteHistoryEntry(deleteButton.dataset.historyDelete);
+      return;
+    }
+
+    const reloadButton = event.target.closest("[data-history-reload]");
+    if (reloadButton) {
+      reloadHistoryEntry(reloadButton.dataset.historyReload);
+    }
+  });
 
   window.addEventListener("beforeunload", handleBeforeUnload);
 }
@@ -563,6 +588,22 @@ function getApiKeyValue() {
   return apiKey?.value.trim() || toolApiKeyInputs.find((input) => input.value.trim())?.value.trim() || "";
 }
 
+function normalizeToolModelCards() {
+  ["video", "transcription", "realtime", "tts"].forEach((tool) => {
+    const config = getToolModelConfig(tool);
+    if (!config?.cards) return;
+
+    config.cards.querySelectorAll(".tool-model-card").forEach((card) => {
+      if (isToolModelHidden(tool, card.dataset.toolModel)) {
+        card.remove();
+      }
+    });
+
+    bindToolModelCards(config.cards);
+    setToolModel(tool, findFirstToolModel(tool) || config.defaultModel);
+  });
+}
+
 function getToolModelConfig(tool) {
   const configs = {
     video: {
@@ -609,10 +650,13 @@ function getToolModelConfig(tool) {
 
 function bindToolModelCards(root = document) {
   root.querySelectorAll?.(".tool-model-card").forEach((card) => {
+    syncToolModelCloseButton(card);
+
     if (card.dataset.toolModelBound === "true") return;
 
     card.dataset.toolModelBound = "true";
-    card.addEventListener("click", () => {
+    card.addEventListener("click", (event) => {
+      if (event?.target?.closest(".tool-model-card__close")) return;
       const tool = card.closest("[data-tool-model-picker]")?.dataset.toolModelPicker;
       const model = normalizeModelName(card.dataset.toolModel);
       setToolModel(tool, model);
@@ -625,6 +669,10 @@ function setToolModel(tool, model) {
   model = normalizeModelName(model);
 
   if (!config || !model) return;
+
+  if (isToolModelHidden(tool, model)) {
+    model = findFirstToolModel(tool) || config.defaultModel;
+  }
 
   if (config.input) {
     config.input.value = model;
@@ -640,6 +688,74 @@ function setToolModel(tool, model) {
   if (config.badge) {
     config.badge.textContent = model;
   }
+}
+
+function syncToolModelCloseButton(card) {
+  if (card.querySelector(".tool-model-card__close")) return;
+
+  const button = document.createElement("span");
+  button.role = "button";
+  button.tabIndex = 0;
+  button.className = "tool-model-card__close";
+  button.title = "隐藏这个模型";
+  button.setAttribute("aria-label", "隐藏这个模型");
+  button.textContent = "×";
+
+  const hide = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const tool = card.closest("[data-tool-model-picker]")?.dataset.toolModelPicker;
+    hideToolModel(tool, normalizeModelName(card.dataset.toolModel));
+  };
+
+  button.addEventListener("click", hide);
+  button.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    hide(event);
+  });
+
+  card.appendChild(button);
+}
+
+function hideToolModel(tool, model) {
+  const config = getToolModelConfig(tool);
+  model = normalizeModelName(model);
+
+  if (!config || !model) return;
+
+  if (!HIDDEN_TOOL_MODELS[tool]) {
+    HIDDEN_TOOL_MODELS[tool] = [];
+  }
+
+  if (!HIDDEN_TOOL_MODELS[tool].includes(model)) {
+    HIDDEN_TOOL_MODELS[tool].push(model);
+    saveHiddenToolModels();
+  }
+
+  config.cards
+    ?.querySelectorAll(".tool-model-card")
+    .forEach((card) => {
+      if (normalizeModelName(card.dataset.toolModel) === model) {
+        card.remove();
+      }
+    });
+
+  if (normalizeModelName(config.input?.value || "") === model) {
+    setToolModel(tool, findFirstToolModel(tool) || config.defaultModel);
+  }
+
+  setToolModelSyncStatus(tool, `已隐藏模型 ${model}，刷新时不会再显示。`, "success");
+}
+
+function findFirstToolModel(tool) {
+  const config = getToolModelConfig(tool);
+  const card = Array.from(config?.cards?.querySelectorAll(".tool-model-card") || [])
+    .find((item) => !isToolModelHidden(tool, item.dataset.toolModel));
+  return normalizeModelName(card?.dataset.toolModel || "");
+}
+
+function isToolModelHidden(tool, model) {
+  return (HIDDEN_TOOL_MODELS[tool] || []).includes(normalizeModelName(model));
 }
 
 async function refreshToolModels(tool) {
@@ -689,7 +805,9 @@ async function refreshToolModels(tool) {
 
     const modelNames = extractModelNamesFromModelsResponse(raw);
     const detectedModels = uniqueArray(
-      modelNames.filter((model) => inferToolModelType(model) === tool)
+      modelNames.filter(
+        (model) => inferToolModelType(model) === tool && !isToolModelHidden(tool, model)
+      )
     );
 
     registerToolModels(tool, detectedModels);
@@ -741,6 +859,8 @@ function ensureToolModelCard(tool, model) {
   const existingCard = Array.from(
     config.cards.querySelectorAll(".tool-model-card")
   ).find((card) => normalizeModelName(card.dataset.toolModel) === model);
+
+  if (isToolModelHidden(tool, model)) return;
 
   if (existingCard) {
     bindToolModelCards(config.cards);
@@ -2123,6 +2243,8 @@ async function handleGenerate(event) {
     addHistoryEntry({
       type: isEditMode ? "图片编辑" : "图片生成",
       model,
+      mode: isEditMode ? "编辑" : "生成",
+      size,
       prompt,
       resultCount: result.images.length,
       preview: result.images[0],
@@ -3306,6 +3428,8 @@ async function handleVideoGenerate(event) {
     addHistoryEntry({
       type: "视频生成",
       model,
+      size,
+      mode: `${seconds} 秒`,
       prompt,
       resultCount: result.videos.length,
       preview: result.videos[0],
@@ -3587,6 +3711,7 @@ async function handleTextToSpeech(event) {
     addHistoryEntry({
       type: "文字转语音",
       model,
+      mode: voice,
       prompt: input,
       preview: result.audioUrl,
     });
@@ -3936,6 +4061,24 @@ function getHistoryEntries() {
   }
 }
 
+function loadHiddenToolModels() {
+  try {
+    const value = JSON.parse(
+      localStorage.getItem(HIDDEN_TOOL_MODEL_STORAGE_KEY) || "{}"
+    );
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveHiddenToolModels() {
+  localStorage.setItem(
+    HIDDEN_TOOL_MODEL_STORAGE_KEY,
+    JSON.stringify(HIDDEN_TOOL_MODELS)
+  );
+}
+
 function saveHistoryEntries(entries) {
   localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries.slice(0, 80)));
 }
@@ -3946,10 +4089,13 @@ function addHistoryEntry(entry) {
     typeof entry.preview === "string" && /^https?:\/\//.test(entry.preview)
       ? entry.preview
       : "";
+  const category = getHistoryCategory(entry);
 
   entries.unshift({
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     createdAt: new Date().toISOString(),
+    status: "已完成",
+    category,
     ...entry,
     preview: safePreview,
   });
@@ -3961,39 +4107,149 @@ function renderHistory() {
   if (!historyList) return;
 
   const entries = getHistoryEntries();
+  const counts = getHistoryCounts(entries);
+  const filteredEntries =
+    historyFilter === "all"
+      ? entries
+      : entries.filter((item) => getHistoryCategory(item) === historyFilter);
+
+  updateHistoryFilters(counts);
 
   if (historyStatusText) {
     historyStatusText.textContent = entries.length
-      ? `共 ${entries.length} 条本地历史。`
+      ? `查看和管理生成历史`
       : "暂无历史记录。";
   }
 
-  if (!entries.length) {
+  if (!filteredEntries.length) {
     historyList.innerHTML = `<div class="empty-text">暂无历史记录。</div>`;
     return;
   }
 
-  historyList.innerHTML = entries
+  historyList.innerHTML = filteredEntries
     .map((item) => {
       const time = new Date(item.createdAt).toLocaleString();
+      const category = getHistoryCategory(item);
+      const categoryLabel = getHistoryCategoryLabel(category);
       const preview = item.preview
         ? `<a href="${item.preview}" target="_blank" rel="noreferrer">打开结果</a>`
         : "";
       const text = item.text ? `<p>${escapeHtml(item.text).slice(0, 500)}</p>` : "";
+      const details = [
+        item.model || "",
+        item.mode || "",
+        item.size || "",
+        item.resultCount ? `${item.resultCount} 个结果` : "",
+      ]
+        .filter(Boolean)
+        .join(" ｜ ");
 
       return `
         <article class="history-item">
-          <div>
-            <strong>${escapeHtml(item.type || "任务")}</strong>
-            <span>${escapeHtml(item.model || "-")} · ${time}</span>
+          <div class="history-item__main">
+            <div class="history-item__meta">
+              <span class="history-chip">${categoryLabel}</span>
+              <span class="history-chip history-chip--success">${escapeHtml(item.status || "已完成")}</span>
+              <span class="history-chip history-chip--model">${escapeHtml(item.model || "-")}</span>
+              <time>${time}</time>
+            </div>
+            <strong>${escapeHtml(item.prompt || item.type || "任务")}</strong>
+            <p>${escapeHtml(details)}</p>
+            ${text}
+            ${preview}
           </div>
-          <p>${escapeHtml(item.prompt || "")}</p>
-          ${text}
-          ${preview}
+          <div class="history-item__actions">
+            <button type="button" class="secondary-btn" data-history-reload="${item.id}">重新加载参数</button>
+            <button type="button" class="history-danger-btn" data-history-delete="${item.id}">删除</button>
+          </div>
         </article>
       `;
     })
     .join("");
+}
+
+function getHistoryCategory(entry) {
+  const type = String(entry?.type || "").toLowerCase();
+
+  if (type.includes("视频")) return "video";
+  if (type.includes("音频") || type.includes("语音") || type.includes("转写")) return "audio";
+  if (type.includes("图片") || type.includes("图")) return "image";
+
+  return entry?.category || "image";
+}
+
+function getHistoryCategoryLabel(category) {
+  if (category === "video") return "视频";
+  if (category === "audio") return "音频";
+  if (category === "image") return "图片";
+  return "任务";
+}
+
+function getHistoryCounts(entries) {
+  return entries.reduce(
+    (counts, item) => {
+      const category = getHistoryCategory(item);
+      counts.all += 1;
+      counts[category] = (counts[category] || 0) + 1;
+      return counts;
+    },
+    { all: 0, video: 0, image: 0, audio: 0 }
+  );
+}
+
+function updateHistoryFilters(counts) {
+  historyFilters?.querySelectorAll("[data-history-filter]").forEach((button) => {
+    const filter = button.dataset.historyFilter || "all";
+    const labelMap = {
+      all: "全部",
+      video: "视频",
+      image: "图片",
+      audio: "音频",
+    };
+
+    button.classList.toggle("active", filter === historyFilter);
+    button.textContent = `${labelMap[filter] || filter} (${counts[filter] || 0})`;
+  });
+}
+
+function deleteHistoryEntry(id) {
+  saveHistoryEntries(getHistoryEntries().filter((item) => item.id !== id));
+  renderHistory();
+}
+
+function reloadHistoryEntry(id) {
+  const item = getHistoryEntries().find((entry) => entry.id === id);
+  if (!item) return;
+
+  const category = getHistoryCategory(item);
+
+  if (category === "image") {
+    switchTool("image");
+    setModel(item.model || DEFAULT_IMAGE_MODEL);
+    if (promptInput) promptInput.value = item.prompt || "";
+    return;
+  }
+
+  if (category === "video") {
+    switchTool("video");
+    ensureToolModelCard("video", item.model || "sora-2");
+    setToolModel("video", item.model || "sora-2");
+    if (videoPromptInput) videoPromptInput.value = item.prompt || "";
+    return;
+  }
+
+  if (category === "audio") {
+    if (String(item.type || "").includes("转写")) {
+      switchTool("transcription");
+      ensureToolModelCard("transcription", item.model || "whisper-1");
+      setToolModel("transcription", item.model || "whisper-1");
+    } else {
+      switchTool("tts");
+      ensureToolModelCard("tts", item.model || "tts-1");
+      setToolModel("tts", item.model || "tts-1");
+      if (ttsTextInput) ttsTextInput.value = item.prompt || "";
+    }
+  }
 }
 
 function clearHistory() {

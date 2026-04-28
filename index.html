@@ -711,7 +711,19 @@
             <div class="tool-grid">
               <div class="field-row">
                 <label for="ttsVoice">音色</label>
-                <input id="ttsVoice" type="text" value="alloy" autocomplete="off" />
+                <select id="ttsVoice">
+                  <option value="alloy">alloy</option>
+                  <option value="ash">ash</option>
+                  <option value="ballad">ballad</option>
+                  <option value="coral">coral</option>
+                  <option value="echo">echo</option>
+                  <option value="fable">fable</option>
+                  <option value="nova">nova</option>
+                  <option value="onyx">onyx</option>
+                  <option value="sage">sage</option>
+                  <option value="shimmer">shimmer</option>
+                  <option value="verse">verse</option>
+                </select>
               </div>
             </div>
             <div class="field-row prompt-row form-row-horizontal">
@@ -735,25 +747,23 @@
         </section>
       </section>
 
-      <section class="workspace tool-workspace" data-tool-panel="history" hidden>
-        <aside class="panel control-panel">
-          <div class="history-toolbar">
+      <section class="tool-workspace history-workspace" data-tool-panel="history" hidden>
+        <div class="history-topline">
+          <div>
             <h3>历史记录</h3>
-            <button id="clearHistoryBtn" class="secondary-btn" type="button">清空历史</button>
+            <p id="historyStatusText">暂无历史记录。</p>
           </div>
-          <p class="hint">历史记录只保存在当前浏览器本地，不会上传到服务器。</p>
-        </aside>
+          <button id="clearHistoryBtn" class="history-danger-btn" type="button">清空全部</button>
+        </div>
 
-        <section class="panel preview-panel">
-          <div class="preview-head">
-            <div>
-              <h3>最近任务</h3>
-              <p id="historyStatusText">暂无历史记录。</p>
-            </div>
-            <span class="badge">Local</span>
-          </div>
-          <div id="historyList" class="history-list"></div>
-        </section>
+        <div id="historyFilters" class="history-filters">
+          <button type="button" class="active" data-history-filter="all">全部 (0)</button>
+          <button type="button" data-history-filter="video">视频 (0)</button>
+          <button type="button" data-history-filter="image">图片 (0)</button>
+          <button type="button" data-history-filter="audio">音频 (0)</button>
+        </div>
+
+        <div id="historyList" class="history-list"></div>
       </section>
     </main>
   </div>
