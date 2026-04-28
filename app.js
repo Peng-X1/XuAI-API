@@ -201,6 +201,7 @@ const heroTitle = $(".hero h2");
 const heroTitleText = $(".hero [data-hero-title]");
 const heroIcon = $(".hero .hero-icon");
 const heroDesc = $(".hero p");
+const heroActions = $(".hero-actions");
 
 const videoForm = $("#videoForm");
 const videoModelInput = $("#videoModel");
@@ -557,6 +558,10 @@ function syncToolHeader(tool) {
 
   if (heroDesc) {
     heroDesc.textContent = meta.desc;
+  }
+
+  if (heroActions) {
+    heroActions.hidden = tool !== "history";
   }
 }
 

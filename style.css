@@ -137,9 +137,9 @@ body.light .topbar {
   align-items: center;
   gap: 10px;
   transition:
-    color 0.18s ease,
-    background 0.18s ease,
-    transform 0.18s ease;
+    color 0.28s ease,
+    background 0.28s ease,
+    transform 0.28s ease;
 }
 
 .nav-item.active,
@@ -231,6 +231,18 @@ body.light .topbar {
   height: 0.92em;
   color: #65e8ff;
   filter: drop-shadow(0 0 18px rgba(25, 183, 255, 0.24));
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: center;
+  margin-left: auto;
+}
+
+.hero-actions[hidden] {
+  display: none !important;
 }
 
 .workspace {
@@ -2304,18 +2316,24 @@ textarea {
 }
 
 .tool-workspace.is-entering {
-  animation: toolPanelIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: toolPanelIn 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.tool-workspace.is-entering > .panel,
+.tool-workspace.is-entering > .history-filters,
+.tool-workspace.is-entering > .history-list {
+  animation: toolContentIn 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
 }
 
 .hero.is-entering {
-  animation: heroHeaderIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: heroHeaderIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes toolPanelIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
-    filter: blur(4px);
+    transform: translateY(18px) scale(0.992);
+    filter: blur(8px);
   }
 
   to {
@@ -2325,10 +2343,22 @@ textarea {
   }
 }
 
+@keyframes toolContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes heroHeaderIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
 
   to {
@@ -2339,6 +2369,9 @@ textarea {
 
 @media (prefers-reduced-motion: reduce) {
   .tool-workspace.is-entering,
+  .tool-workspace.is-entering > .panel,
+  .tool-workspace.is-entering > .history-filters,
+  .tool-workspace.is-entering > .history-list,
   .hero.is-entering {
     animation: none !important;
   }
@@ -2520,28 +2553,6 @@ textarea {
 
 .history-workspace[hidden] {
   display: none !important;
-}
-
-.history-topline {
-  display: flex;
-  justify-content: flex-end;
-  gap: 20px;
-  align-items: flex-start;
-}
-
-.history-topline h3 {
-  margin: 0;
-  font-size: 32px;
-  line-height: 1;
-  background: linear-gradient(90deg, #79d8ff, #a78bfa, #65e8a8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.history-topline p {
-  margin: 10px 0 0;
-  color: var(--muted);
 }
 
 .history-danger-btn {
