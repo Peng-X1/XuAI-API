@@ -982,6 +982,34 @@ textarea:focus {
   display: none;
 }
 
+/* 待配置 / 未识别状态 */
+
+.generation-notice.warning,
+.generation-notice.is-warning {
+  border-color: rgba(245, 158, 11, 0.52);
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.2), transparent 36%),
+    linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(245, 158, 11, 0.06));
+}
+
+.generation-notice.warning .generation-notice__icon-wrap,
+.generation-notice.is-warning .generation-notice__icon-wrap {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+.generation-notice.warning .generation-notice__icon,
+.generation-notice.is-warning .generation-notice__icon {
+  background: #f59e0b;
+  color: #111827;
+  animation: none;
+}
+
+.generation-notice.warning .generation-notice__progress,
+.generation-notice.is-warning .generation-notice__progress {
+  display: none;
+}
+
 
 /* 亮色主题 */
 

@@ -912,7 +912,6 @@ async function refreshToolModels(tool) {
   if (!config) return;
 
   if (!key) {
-    setToolModelSyncStatus(tool, "请先填入个人 API Key。", "warning");
     config.statusText && setToolStatus(config.statusText, "请先填入个人 API Key。", "warning");
     apiKey?.focus();
     return;
@@ -929,7 +928,11 @@ async function refreshToolModels(tool) {
     button.textContent = "刷新中";
   }
 
-  setToolModelSyncStatus(tool, `正在刷新可用${config.label}模型...`, "loading");
+  startToolTaskIndicator(
+    tool,
+    `正在刷新可用${config.label}模型...`,
+    "正在读取当前 API Key 的模型列表，刷新结果会自动更新到左侧模型区。"
+  );
 
   try {
     const response = await fetch(url, {
@@ -960,22 +963,29 @@ async function refreshToolModels(tool) {
     registerToolModels(tool, detectedModels);
 
     if (!detectedModels.length) {
-      setToolModelSyncStatus(
+      finishToolTaskIndicator(
         tool,
+        "warning",
         `没有从当前 API Key 的模型列表中识别到${config.label}模型。`,
-        "warning"
+        "未识别到可用模型。"
       );
       return;
     }
 
-    setToolModelSyncStatus(
+    finishToolTaskIndicator(
       tool,
+      "success",
       `已刷新 ${detectedModels.length} 个可用${config.label}模型。`,
-      "success"
+      "模型刷新完成。"
     );
   } catch (error) {
     console.error(error);
-    setToolModelSyncStatus(tool, error.message || "刷新模型失败。", "error");
+    finishToolTaskIndicator(
+      tool,
+      "error",
+      error.message || "刷新模型失败。",
+      "模型刷新失败。"
+    );
     showToolDebug(getToolDebugBox(tool), error.raw || { error: error.message });
   } finally {
     if (button) {
@@ -1387,7 +1397,6 @@ async function refreshAvailableImageModels() {
   const key = getApiKeyValue();
 
   if (!key) {
-    setModelSyncStatus("请先填入个人 API Key。", "warning");
     setStatus("请先填入个人 API Key。", "warning");
     apiKey?.focus();
     return;
@@ -1396,8 +1405,7 @@ async function refreshAvailableImageModels() {
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const url = `${baseURL}/v1/models`;
 
-  setModelSyncStatus("正在刷新可用绘图模型...", "loading");
-  setStatus("正在读取当前 API Key 可用模型...", "loading");
+  startModelRefreshIndicator();
 
   if (refreshModelsBtn) {
     refreshModelsBtn.disabled = true;
@@ -1435,8 +1443,7 @@ async function refreshAvailableImageModels() {
 
     if (!registered.total) {
       const message = "没有从当前 API Key 的模型列表中识别到绘图模型。";
-      setModelSyncStatus(message, "warning");
-      setStatus(message, "warning");
+      finishModelRefreshIndicator("warning", message, "未识别到可用模型。");
       return;
     }
 
@@ -1444,14 +1451,12 @@ async function refreshAvailableImageModels() {
     applyModelFamilyUi(activeFamily, modelSelect?.value || DEFAULT_IMAGE_MODEL);
 
     const message = `已刷新 ${registered.total} 个可用绘图模型。`;
-    setModelSyncStatus(message, "success");
-    setStatus(message, "success");
+    finishModelRefreshIndicator("success", message, "模型刷新完成。");
   } catch (error) {
     console.error(error);
 
     const message = error.message || "刷新可用模型失败。";
-    setModelSyncStatus(message, "error");
-    setStatus("刷新可用模型失败，请查看调试信息。", "error");
+    finishModelRefreshIndicator("error", message, "模型刷新失败。");
 
     showDebug(
       error.raw || {
@@ -2118,7 +2123,7 @@ function updateEmptyPreviewState(model) {
   if (!gallery?.classList.contains("empty")) return;
 
   if (emptyStateBadge) {
-    emptyStateBadge.textContent = "准备就绪";
+    emptyStateBadge.textContent = "待输入";
   }
 
   if (emptyStateTitle) {
@@ -4238,10 +4243,10 @@ function setTaskStatusBadge(tool, type = "info") {
   if (!badge) return;
 
   const labelMap = {
-    info: "空闲",
+    info: "待配置",
     loading: "处理中",
     success: "完成",
-    warning: "待处理",
+    warning: "待配置",
     error: "失败",
   };
 
@@ -4309,8 +4314,10 @@ function startToolTaskIndicator(tool, title, desc) {
   indicator.notice.hidden = false;
   indicator.notice.classList.remove(
     "success",
+    "warning",
     "error",
     "is-success",
+    "is-warning",
     "is-error"
   );
   indicator.notice.classList.add("loading", "is-loading");
@@ -4323,7 +4330,7 @@ function startToolTaskIndicator(tool, title, desc) {
   indicator.timerId = setInterval(() => updateToolTaskTimer(tool), 50);
 }
 
-function finishToolTaskIndicator(tool, type = "success", message = "") {
+function finishToolTaskIndicator(tool, type = "success", message = "", title = "") {
   const indicator = ensureToolTaskIndicator(tool);
   if (!indicator) return;
 
@@ -4333,25 +4340,28 @@ function finishToolTaskIndicator(tool, type = "success", message = "") {
   }
 
   const isError = type === "error";
+  const isWarning = type === "warning";
   const elapsed = indicator.startedAt ? Date.now() - indicator.startedAt : 0;
 
   indicator.notice.hidden = false;
   indicator.notice.classList.remove(
     "loading",
     "success",
+    "warning",
     "error",
     "is-loading",
     "is-success",
+    "is-warning",
     "is-error"
   );
-  indicator.notice.classList.add(isError ? "error" : "success");
-  indicator.notice.classList.add(isError ? "is-error" : "is-success");
-  indicator.icon.textContent = isError ? "!" : "✓";
-  indicator.title.textContent = isError ? "任务处理失败。" : "任务处理完成。";
+  indicator.notice.classList.add(isError ? "error" : isWarning ? "warning" : "success");
+  indicator.notice.classList.add(isError ? "is-error" : isWarning ? "is-warning" : "is-success");
+  indicator.icon.textContent = isError || isWarning ? "!" : "✓";
+  indicator.title.textContent = title || (isError ? "任务处理失败。" : "任务处理完成。");
   indicator.desc.textContent = message || (isError ? "处理过程中发生错误，请查看调试信息。" : "结果已经显示在下方。");
-  indicator.status.textContent = `当前状态：${isError ? "失败" : "完成"}`;
+  indicator.status.textContent = `当前状态：${isError ? "失败" : isWarning ? "待配置" : "完成"}`;
   indicator.timer.textContent = `总用时 ${formatElapsedTime(elapsed)}`;
-  setTaskStatusBadge(tool, isError ? "error" : "success");
+  setTaskStatusBadge(tool, isError ? "error" : isWarning ? "warning" : "success");
 }
 
 function updateToolTaskTimer(tool) {
@@ -4602,6 +4612,101 @@ function handleBeforeUnload(event) {
   event.returnValue = "";
 }
 
+function startModelRefreshIndicator() {
+  generationStartTime = Date.now();
+  setTaskStatusBadge("image", "loading");
+
+  if (generationTimerId) {
+    clearInterval(generationTimerId);
+    generationTimerId = null;
+  }
+
+  if (generationNotice) {
+    generationNotice.hidden = false;
+    generationNotice.classList.remove(
+      "success",
+      "warning",
+      "error",
+      "is-success",
+      "is-warning",
+      "is-error"
+    );
+    generationNotice.classList.add("loading", "is-loading");
+  }
+
+  if (generationNoticeIcon) {
+    generationNoticeIcon.textContent = "!";
+  }
+
+  if (generationNoticeTitle) {
+    generationNoticeTitle.textContent = "正在刷新可用绘图模型...";
+  }
+
+  if (generationNoticeDesc) {
+    generationNoticeDesc.textContent =
+      "正在读取当前 API Key 的模型列表，刷新结果会自动更新到左侧模型区。";
+  }
+
+  if (generationModelName) {
+    generationModelName.textContent = "当前状态：刷新中";
+  }
+
+  updateGenerationTimer();
+  generationTimerId = setInterval(updateGenerationTimer, 50);
+}
+
+function finishModelRefreshIndicator(type = "success", message = "", title = "") {
+  const elapsed = generationStartTime ? Date.now() - generationStartTime : 0;
+
+  if (generationTimerId) {
+    clearInterval(generationTimerId);
+    generationTimerId = null;
+  }
+
+  if (!generationNotice) return;
+
+  generationNotice.hidden = false;
+  generationNotice.classList.remove(
+    "loading",
+    "success",
+    "warning",
+    "error",
+    "is-loading",
+    "is-success",
+    "is-warning",
+    "is-error"
+  );
+
+  const isError = type === "error";
+  const isWarning = type === "warning";
+
+  generationNotice.classList.add(isError ? "error" : isWarning ? "warning" : "success");
+  generationNotice.classList.add(isError ? "is-error" : isWarning ? "is-warning" : "is-success");
+  setTaskStatusBadge("image", isError ? "error" : isWarning ? "warning" : "success");
+
+  if (generationNoticeIcon) {
+    generationNoticeIcon.textContent = isError || isWarning ? "!" : "✓";
+  }
+
+  if (generationNoticeTitle) {
+    generationNoticeTitle.textContent =
+      title || (isError ? "模型刷新失败。" : isWarning ? "未识别到可用模型。" : "模型刷新完成。");
+  }
+
+  if (generationNoticeDesc) {
+    generationNoticeDesc.textContent =
+      message || (isError ? "刷新过程中发生错误，请查看调试信息。" : "模型列表已经更新。");
+  }
+
+  if (generationModelName) {
+    generationModelName.textContent = `当前状态：${isError ? "失败" : isWarning ? "待配置" : "完成"}`;
+  }
+
+  if (generationTimer) {
+    generationTimer.textContent = `总用时 ${formatElapsedTime(elapsed)}`;
+  }
+}
+
 function startGenerationIndicator(model) {
   isGeneratingImage = true;
   generationStartTime = Date.now();
@@ -4616,8 +4721,10 @@ function startGenerationIndicator(model) {
     generationNotice.hidden = false;
     generationNotice.classList.remove(
       "success",
+      "warning",
       "error",
       "is-success",
+      "is-warning",
       "is-error"
     );
     generationNotice.classList.add("loading", "is-loading");
@@ -4663,9 +4770,11 @@ function finishGenerationIndicator(type = "success", message = "") {
   generationNotice.classList.remove(
     "loading",
     "success",
+    "warning",
     "error",
     "is-loading",
     "is-success",
+    "is-warning",
     "is-error"
   );
 
