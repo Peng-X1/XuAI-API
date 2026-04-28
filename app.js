@@ -210,6 +210,8 @@ const videoStatusText = $("#videoStatusText");
 const videoModelBadge = $("#videoModelBadge");
 const videoGallery = $("#videoGallery");
 const videoDebugBox = $("#videoDebugBox");
+const videoModelCards = $("#videoModelCards");
+const videoModelSyncText = $("#videoModelSyncText");
 
 const transcriptionForm = $("#transcriptionForm");
 const transcriptionModelInput = $("#transcriptionModel");
@@ -219,6 +221,8 @@ const transcriptionBtn = $("#transcriptionBtn");
 const transcriptionStatusText = $("#transcriptionStatusText");
 const transcriptionResult = $("#transcriptionResult");
 const transcriptionDebugBox = $("#transcriptionDebugBox");
+const transcriptionModelCards = $("#transcriptionModelCards");
+const transcriptionModelSyncText = $("#transcriptionModelSyncText");
 
 const realtimeModelInput = $("#realtimeModel");
 const realtimeInstructionsInput = $("#realtimeInstructions");
@@ -228,6 +232,8 @@ const realtimeStatusText = $("#realtimeStatusText");
 const realtimeAudio = $("#realtimeAudio");
 const realtimeLog = $("#realtimeLog");
 const realtimeDebugBox = $("#realtimeDebugBox");
+const realtimeModelCards = $("#realtimeModelCards");
+const realtimeModelSyncText = $("#realtimeModelSyncText");
 
 const ttsForm = $("#ttsForm");
 const ttsModelInput = $("#ttsModel");
@@ -237,6 +243,8 @@ const ttsBtn = $("#ttsBtn");
 const ttsStatusText = $("#ttsStatusText");
 const ttsResult = $("#ttsResult");
 const ttsDebugBox = $("#ttsDebugBox");
+const ttsModelCards = $("#ttsModelCards");
+const ttsModelSyncText = $("#ttsModelSyncText");
 
 const historyList = $("#historyList");
 const historyStatusText = $("#historyStatusText");
@@ -247,6 +255,7 @@ let realtimePeerConnection = null;
 let realtimeDataChannel = null;
 let realtimeLocalStream = null;
 let toolApiKeyInputs = [];
+let toolModelRefreshBtns = [];
 
 // 生成中提示框相关 DOM。
 // 如果 index.html 暂时没加这些节点，不会报错，只是不显示提示框。
@@ -482,9 +491,14 @@ function syncImageModeUi() {
 }
 
 function initSharedApiKeyInputs() {
-  const forms = [videoForm, transcriptionForm, ttsForm, $("#realtimeForm")].filter(Boolean);
+  const forms = [
+    { form: videoForm, tool: "video" },
+    { form: transcriptionForm, tool: "transcription" },
+    { form: $("#realtimeForm"), tool: "realtime" },
+    { form: ttsForm, tool: "tts" },
+  ].filter((item) => item.form);
 
-  forms.forEach((targetForm) => {
+  forms.forEach(({ form: targetForm, tool }) => {
     if (targetForm.querySelector("[data-shared-api-key]")) return;
 
     const row = document.createElement("div");
@@ -494,6 +508,7 @@ function initSharedApiKeyInputs() {
       <div class="key-wrap">
         <input type="password" autocomplete="off" placeholder="填入个人APIKey" data-shared-api-key />
         <button type="button" data-shared-api-key-toggle>显示</button>
+        <button type="button" data-refresh-tool-models="${tool}">刷新模型</button>
       </div>
     `;
 
@@ -501,6 +516,7 @@ function initSharedApiKeyInputs() {
   });
 
   toolApiKeyInputs = $$("[data-shared-api-key]");
+  toolModelRefreshBtns = $$("[data-refresh-tool-models]");
 
   toolApiKeyInputs.forEach((input) => {
     input.value = apiKey?.value || "";
@@ -525,6 +541,14 @@ function initSharedApiKeyInputs() {
       button.textContent = isPassword ? "隐藏" : "显示";
     });
   });
+
+  toolModelRefreshBtns.forEach((button) => {
+    button.addEventListener("click", () => {
+      refreshToolModels(button.dataset.refreshToolModels);
+    });
+  });
+
+  bindToolModelCards();
 }
 
 function syncSharedApiKeyInputs(value, sourceInput = null) {
@@ -537,6 +561,286 @@ function syncSharedApiKeyInputs(value, sourceInput = null) {
 
 function getApiKeyValue() {
   return apiKey?.value.trim() || toolApiKeyInputs.find((input) => input.value.trim())?.value.trim() || "";
+}
+
+function getToolModelConfig(tool) {
+  const configs = {
+    video: {
+      label: "视频",
+      defaultModel: "sora-2",
+      tag: "Video API",
+      input: videoModelInput,
+      cards: videoModelCards,
+      syncText: videoModelSyncText,
+      statusText: videoStatusText,
+      badge: videoModelBadge,
+    },
+    transcription: {
+      label: "转写",
+      defaultModel: "whisper-1",
+      tag: "Transcriptions API",
+      input: transcriptionModelInput,
+      cards: transcriptionModelCards,
+      syncText: transcriptionModelSyncText,
+      statusText: transcriptionStatusText,
+    },
+    realtime: {
+      label: "实时语音",
+      defaultModel: "gpt-realtime",
+      tag: "Realtime API",
+      input: realtimeModelInput,
+      cards: realtimeModelCards,
+      syncText: realtimeModelSyncText,
+      statusText: realtimeStatusText,
+    },
+    tts: {
+      label: "文字转语音",
+      defaultModel: "tts-1",
+      tag: "Speech API",
+      input: ttsModelInput,
+      cards: ttsModelCards,
+      syncText: ttsModelSyncText,
+      statusText: ttsStatusText,
+    },
+  };
+
+  return configs[tool] || null;
+}
+
+function bindToolModelCards(root = document) {
+  root.querySelectorAll?.(".tool-model-card").forEach((card) => {
+    if (card.dataset.toolModelBound === "true") return;
+
+    card.dataset.toolModelBound = "true";
+    card.addEventListener("click", () => {
+      const tool = card.closest("[data-tool-model-picker]")?.dataset.toolModelPicker;
+      const model = normalizeModelName(card.dataset.toolModel);
+      setToolModel(tool, model);
+    });
+  });
+}
+
+function setToolModel(tool, model) {
+  const config = getToolModelConfig(tool);
+  model = normalizeModelName(model);
+
+  if (!config || !model) return;
+
+  if (config.input) {
+    config.input.value = model;
+  }
+
+  config.cards?.querySelectorAll(".tool-model-card").forEach((card) => {
+    card.classList.toggle(
+      "active",
+      normalizeModelName(card.dataset.toolModel) === model
+    );
+  });
+
+  if (config.badge) {
+    config.badge.textContent = model;
+  }
+}
+
+async function refreshToolModels(tool) {
+  const config = getToolModelConfig(tool);
+  const key = getApiKeyValue();
+
+  if (!config) return;
+
+  if (!key) {
+    setToolModelSyncStatus(tool, "请先填入个人 API Key。", "warning");
+    config.statusText && setToolStatus(config.statusText, "请先填入个人 API Key。", "warning");
+    apiKey?.focus();
+    return;
+  }
+
+  const button = toolModelRefreshBtns.find(
+    (item) => item.dataset.refreshToolModels === tool
+  );
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
+  const url = `${baseURL}/v1/models`;
+
+  if (button) {
+    button.disabled = true;
+    button.textContent = "刷新中";
+  }
+
+  setToolModelSyncStatus(tool, `正在刷新可用${config.label}模型...`, "loading");
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${key}`,
+      },
+    });
+
+    const raw = await safeJson(response);
+
+    if (!response.ok) {
+      const error = new Error(buildApiErrorMessage(raw, response, "Models API"));
+      error.raw = {
+        request_url: url,
+        response: raw,
+      };
+      throw error;
+    }
+
+    const modelNames = extractModelNamesFromModelsResponse(raw);
+    const detectedModels = uniqueArray(
+      modelNames.filter((model) => inferToolModelType(model) === tool)
+    );
+
+    registerToolModels(tool, detectedModels);
+
+    if (!detectedModels.length) {
+      setToolModelSyncStatus(
+        tool,
+        `没有从当前 API Key 的模型列表中识别到${config.label}模型。`,
+        "warning"
+      );
+      return;
+    }
+
+    setToolModelSyncStatus(
+      tool,
+      `已刷新 ${detectedModels.length} 个可用${config.label}模型。`,
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+    setToolModelSyncStatus(tool, error.message || "刷新模型失败。", "error");
+    showToolDebug(getToolDebugBox(tool), error.raw || { error: error.message });
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "刷新模型";
+    }
+  }
+}
+
+function registerToolModels(tool, models) {
+  const config = getToolModelConfig(tool);
+  if (!config?.cards) return;
+
+  models.forEach((model) => ensureToolModelCard(tool, model));
+
+  const currentModel = normalizeModelName(config.input?.value || "");
+  if (currentModel) {
+    setToolModel(tool, currentModel);
+  }
+}
+
+function ensureToolModelCard(tool, model) {
+  const config = getToolModelConfig(tool);
+  model = normalizeModelName(model);
+
+  if (!config?.cards || !model) return;
+
+  const existingCard = Array.from(
+    config.cards.querySelectorAll(".tool-model-card")
+  ).find((card) => normalizeModelName(card.dataset.toolModel) === model);
+
+  if (existingCard) {
+    bindToolModelCards(config.cards);
+    return;
+  }
+
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "tool-model-card";
+  card.dataset.toolModel = model;
+
+  const title = document.createElement("strong");
+  title.textContent = model;
+
+  const tag = document.createElement("span");
+  tag.textContent = config.tag;
+
+  card.append(title, tag);
+  config.cards.appendChild(card);
+  bindToolModelCards(config.cards);
+}
+
+function setToolModelSyncStatus(tool, message, type = "info") {
+  const config = getToolModelConfig(tool);
+  if (!config?.syncText) return;
+
+  config.syncText.textContent = message;
+  const colorMap = {
+    info: "",
+    loading: "var(--primary)",
+    success: "var(--success)",
+    warning: "var(--warning)",
+    error: "var(--danger)",
+  };
+  config.syncText.style.color = colorMap[type] || "";
+}
+
+function getToolDebugBox(tool) {
+  if (tool === "video") return videoDebugBox;
+  if (tool === "transcription") return transcriptionDebugBox;
+  if (tool === "realtime") return realtimeDebugBox;
+  if (tool === "tts") return ttsDebugBox;
+  return null;
+}
+
+function inferToolModelType(model) {
+  const value = normalizeModelName(model).toLowerCase();
+
+  if (!value) return "";
+
+  if (isLikelyVideoModelName(value)) return "video";
+  if (isLikelyTranscriptionModelName(value)) return "transcription";
+  if (isLikelyRealtimeModelName(value)) return "realtime";
+  if (isLikelyTtsModelName(value)) return "tts";
+
+  return "";
+}
+
+function isLikelyVideoModelName(value) {
+  return (
+    value.includes("sora") ||
+    value.includes("video") ||
+    value.includes("veo") ||
+    value.includes("kling") ||
+    value.includes("wan") ||
+    value.includes("hailuo") ||
+    value.includes("seedance") ||
+    value.includes("runway") ||
+    value.includes("luma") ||
+    value.includes("minimax") ||
+    value.includes("pika")
+  );
+}
+
+function isLikelyTranscriptionModelName(value) {
+  return (
+    value.includes("whisper") ||
+    value.includes("transcrib") ||
+    value.includes("transcript") ||
+    value.includes("speech-to-text") ||
+    value.includes("stt") ||
+    value.includes("asr")
+  );
+}
+
+function isLikelyRealtimeModelName(value) {
+  return value.includes("realtime") || value.includes("real-time");
+}
+
+function isLikelyTtsModelName(value) {
+  if (isLikelyTranscriptionModelName(value) || isLikelyRealtimeModelName(value)) {
+    return false;
+  }
+
+  return (
+    value.includes("tts") ||
+    value.includes("text-to-speech") ||
+    value.includes("speech") ||
+    value.includes("voice")
+  );
 }
 
 function lockProviderSettings() {

@@ -552,9 +552,18 @@
       <section class="workspace tool-workspace" data-tool-panel="video" hidden>
         <aside class="panel control-panel">
           <form id="videoForm" class="form">
-            <div class="field-row form-row-horizontal">
-              <label for="videoModel">视频模型</label>
-              <input id="videoModel" type="text" value="sora-2" autocomplete="off" />
+            <div class="field-row form-row-horizontal tool-model-picker-row" data-tool-model-picker="video">
+              <label>视频模型</label>
+              <div class="tool-stack">
+                <input id="videoModel" type="hidden" value="sora-2" />
+                <div id="videoModelCards" class="tool-model-cards">
+                  <button type="button" class="tool-model-card active" data-tool-model="sora-2">
+                    <strong>sora-2</strong>
+                    <span>Video API</span>
+                  </button>
+                </div>
+                <span id="videoModelSyncText" class="model-sync-text">填入 API Key 后可刷新可用视频模型</span>
+              </div>
             </div>
 
             <div class="field-row prompt-row form-row-horizontal">
@@ -603,9 +612,18 @@
       <section class="workspace tool-workspace" data-tool-panel="transcription" hidden>
         <aside class="panel control-panel">
           <form id="transcriptionForm" class="form">
-            <div class="field-row form-row-horizontal">
-              <label for="transcriptionModel">转写模型</label>
-              <input id="transcriptionModel" type="text" value="whisper-1" autocomplete="off" />
+            <div class="field-row form-row-horizontal tool-model-picker-row" data-tool-model-picker="transcription">
+              <label>转写模型</label>
+              <div class="tool-stack">
+                <input id="transcriptionModel" type="hidden" value="whisper-1" />
+                <div id="transcriptionModelCards" class="tool-model-cards">
+                  <button type="button" class="tool-model-card active" data-tool-model="whisper-1">
+                    <strong>whisper-1</strong>
+                    <span>Transcriptions API</span>
+                  </button>
+                </div>
+                <span id="transcriptionModelSyncText" class="model-sync-text">填入 API Key 后可刷新可用转写模型</span>
+              </div>
             </div>
             <div class="field-row form-row-horizontal">
               <label for="audioFileInput">音频文件</label>
@@ -635,9 +653,18 @@
       <section class="workspace tool-workspace" data-tool-panel="realtime" hidden>
         <aside class="panel control-panel">
           <form id="realtimeForm" class="form">
-            <div class="field-row form-row-horizontal">
-              <label for="realtimeModel">实时模型</label>
-              <input id="realtimeModel" type="text" value="gpt-realtime" autocomplete="off" />
+            <div class="field-row form-row-horizontal tool-model-picker-row" data-tool-model-picker="realtime">
+              <label>实时模型</label>
+              <div class="tool-stack">
+                <input id="realtimeModel" type="hidden" value="gpt-realtime" />
+                <div id="realtimeModelCards" class="tool-model-cards">
+                  <button type="button" class="tool-model-card active" data-tool-model="gpt-realtime">
+                    <strong>gpt-realtime</strong>
+                    <span>Realtime API</span>
+                  </button>
+                </div>
+                <span id="realtimeModelSyncText" class="model-sync-text">填入 API Key 后可刷新可用实时语音模型</span>
+              </div>
             </div>
             <div class="field-row prompt-row form-row-horizontal">
               <label for="realtimeInstructions">语音设定</label>
@@ -667,11 +694,21 @@
       <section class="workspace tool-workspace" data-tool-panel="tts" hidden>
         <aside class="panel control-panel">
           <form id="ttsForm" class="form">
-            <div class="tool-grid">
-              <div class="field-row">
-                <label for="ttsModel">语音模型</label>
-                <input id="ttsModel" type="text" value="tts-1" autocomplete="off" />
+            <div class="field-row form-row-horizontal tool-model-picker-row" data-tool-model-picker="tts">
+              <label>语音模型</label>
+              <div class="tool-stack">
+                <input id="ttsModel" type="hidden" value="tts-1" />
+                <div id="ttsModelCards" class="tool-model-cards">
+                  <button type="button" class="tool-model-card active" data-tool-model="tts-1">
+                    <strong>tts-1</strong>
+                    <span>Speech API</span>
+                  </button>
+                </div>
+                <span id="ttsModelSyncText" class="model-sync-text">填入 API Key 后可刷新可用文字转语音模型</span>
               </div>
+            </div>
+
+            <div class="tool-grid">
               <div class="field-row">
                 <label for="ttsVoice">音色</label>
                 <input id="ttsVoice" type="text" value="alloy" autocomplete="off" />
