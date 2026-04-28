@@ -59,10 +59,10 @@ const CHAT_COMPLETIONS_IMAGE_MODELS = new Set([
 const MODEL_FAMILY_DEFAULTS = {
   nano: DEFAULT_NANO_MODEL,
   gpt: DEFAULT_IMAGE_MODEL,
-  grok: "",
-  flux: "",
-  doubao: "",
-  qianwen: "",
+  grok: "grok-imagine-image",
+  flux: "flux-1.1-pro",
+  doubao: "doubao-seedream-4-0-250828",
+  qianwen: "qwen-image-edit-plus",
 };
 
 const MODEL_META = {
@@ -100,6 +100,78 @@ const MODEL_META = {
     family: "gpt",
     title: "gpt-5.4",
     description: "使用 gpt-5.4 模型生成图片，基于 Responses API。",
+  },
+
+  "grok-imagine-image": {
+    family: "grok",
+    title: "grok-imagine-image",
+    description: "Grok Imagine 图片生成模型，默认走 Images API。",
+  },
+
+  "grok-imagine-image-pro": {
+    family: "grok",
+    title: "grok-imagine-image-pro",
+    description: "Grok Imagine Pro 图片生成模型，默认走 Images API。",
+  },
+
+  "doubao-seedream-4-0-250828": {
+    family: "doubao",
+    title: "doubao-seedream-4-0-250828",
+    description: "豆包 Seedream 4.0 图片生成模型，默认走 Images API。",
+  },
+
+  "doubao-seededit-3-0-i2i-250628": {
+    family: "doubao",
+    title: "doubao-seededit-3-0-i2i-250628",
+    description: "豆包 SeedEdit 3.0 图生图 / 编辑模型，默认走 Images API。",
+  },
+
+  "doubao-seedream-3-0-t2i-250415": {
+    family: "doubao",
+    title: "doubao-seedream-3-0-t2i-250415",
+    description: "豆包 Seedream 3.0 文生图模型，默认走 Images API。",
+  },
+
+  "flux-1.1-pro": {
+    family: "flux",
+    title: "flux-1.1-pro",
+    description: "Flux 1.1 Pro 图片生成模型，默认走 Images API。",
+  },
+
+  "flux-2-pro": {
+    family: "flux",
+    title: "flux-2-pro",
+    description: "Flux 2 Pro 图片生成模型，默认走 Images API。",
+  },
+
+  "flux-kontext-pro": {
+    family: "flux",
+    title: "flux-kontext-pro",
+    description: "Flux Kontext Pro 图片生成 / 编辑模型，默认走 Images API。",
+  },
+
+  "flux-kontext-max": {
+    family: "flux",
+    title: "flux-kontext-max",
+    description: "Flux Kontext Max 图片生成 / 编辑模型，默认走 Images API。",
+  },
+
+  "flux-2-flex": {
+    family: "flux",
+    title: "flux-2-flex",
+    description: "Flux 2 Flex 图片生成模型，默认走 Images API。",
+  },
+
+  "qwen-image-edit-plus": {
+    family: "qianwen",
+    title: "qwen-image-edit-plus",
+    description: "千问 Qwen Image Edit Plus 图片编辑模型，默认走 Images API。",
+  },
+
+  "qwen-image-edit-plus-2025-10-30": {
+    family: "qianwen",
+    title: "qwen-image-edit-plus-2025-10-30",
+    description: "千问 Qwen Image Edit Plus 2025-10-30 版本，默认走 Images API。",
   },
 };
 

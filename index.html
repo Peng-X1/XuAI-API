@@ -154,6 +154,142 @@
                   <strong>gpt-5.4 生图</strong>
                   <span>使用 gpt-5.4 模型生成图片，基于 Responses API。</span>
                 </button>
+
+                <!-- Grok 模型 -->
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="grok"
+                  data-model="grok-imagine-image"
+                  hidden
+                >
+                  <strong>grok-imagine-image</strong>
+                  <span>Grok Imagine 图片生成模型，默认走 Images API。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="grok"
+                  data-model="grok-imagine-image-pro"
+                  hidden
+                >
+                  <strong>grok-imagine-image-pro</strong>
+                  <span>Grok Imagine Pro 图片生成模型，默认走 Images API。</span>
+                </button>
+
+                <!-- Flux 模型 -->
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="flux"
+                  data-model="flux-1.1-pro"
+                  hidden
+                >
+                  <strong>flux-1.1-pro</strong>
+                  <span>Flux 1.1 Pro 图片生成模型，默认走 Images API。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="flux"
+                  data-model="flux-2-pro"
+                  hidden
+                >
+                  <strong>flux-2-pro</strong>
+                  <span>Flux 2 Pro 图片生成模型，默认走 Images API。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="flux"
+                  data-model="flux-kontext-pro"
+                  hidden
+                >
+                  <strong>flux-kontext-pro</strong>
+                  <span>Flux Kontext Pro 图片生成 / 编辑模型。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="flux"
+                  data-model="flux-kontext-max"
+                  hidden
+                >
+                  <strong>flux-kontext-max</strong>
+                  <span>Flux Kontext Max 图片生成 / 编辑模型。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="flux"
+                  data-model="flux-2-flex"
+                  hidden
+                >
+                  <strong>flux-2-flex</strong>
+                  <span>Flux 2 Flex 图片生成模型，默认走 Images API。</span>
+                </button>
+
+                <!-- 豆包模型 -->
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="doubao"
+                  data-model="doubao-seedream-4-0-250828"
+                  hidden
+                >
+                  <strong>doubao-seedream-4-0-250828</strong>
+                  <span>豆包 Seedream 4.0 图片生成模型。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="doubao"
+                  data-model="doubao-seededit-3-0-i2i-250628"
+                  hidden
+                >
+                  <strong>doubao-seededit-3-0-i2i-250628</strong>
+                  <span>豆包 SeedEdit 3.0 图生图 / 编辑模型。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="doubao"
+                  data-model="doubao-seedream-3-0-t2i-250415"
+                  hidden
+                >
+                  <strong>doubao-seedream-3-0-t2i-250415</strong>
+                  <span>豆包 Seedream 3.0 文生图模型。</span>
+                </button>
+
+                <!-- 千问模型 -->
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="qianwen"
+                  data-model="qwen-image-edit-plus"
+                  hidden
+                >
+                  <strong>qwen-image-edit-plus</strong>
+                  <span>千问 Qwen Image Edit Plus 图片编辑模型。</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="qianwen"
+                  data-model="qwen-image-edit-plus-2025-10-30"
+                  hidden
+                >
+                  <strong>qwen-image-edit-plus-2025-10-30</strong>
+                  <span>千问 Qwen Image Edit Plus 2025-10-30 版本。</span>
+                </button>
               </div>
 
               <!-- 自定义 Nano Banana / Gemini 兼容绘图模型：默认走 /v1/chat/completions -->
@@ -379,6 +515,58 @@
                   data-family="gpt"
                 >
                   gpt-5.4
+                </option>
+
+                <!-- Grok -->
+                <option value="grok-imagine-image" data-family="grok">
+                  grok-imagine-image
+                </option>
+
+                <option value="grok-imagine-image-pro" data-family="grok">
+                  grok-imagine-image-pro
+                </option>
+
+                <!-- Flux -->
+                <option value="flux-1.1-pro" data-family="flux">
+                  flux-1.1-pro
+                </option>
+
+                <option value="flux-2-pro" data-family="flux">
+                  flux-2-pro
+                </option>
+
+                <option value="flux-kontext-pro" data-family="flux">
+                  flux-kontext-pro
+                </option>
+
+                <option value="flux-kontext-max" data-family="flux">
+                  flux-kontext-max
+                </option>
+
+                <option value="flux-2-flex" data-family="flux">
+                  flux-2-flex
+                </option>
+
+                <!-- 豆包 -->
+                <option value="doubao-seedream-4-0-250828" data-family="doubao">
+                  doubao-seedream-4-0-250828
+                </option>
+
+                <option value="doubao-seededit-3-0-i2i-250628" data-family="doubao">
+                  doubao-seededit-3-0-i2i-250628
+                </option>
+
+                <option value="doubao-seedream-3-0-t2i-250415" data-family="doubao">
+                  doubao-seedream-3-0-t2i-250415
+                </option>
+
+                <!-- 千问 -->
+                <option value="qwen-image-edit-plus" data-family="qianwen">
+                  qwen-image-edit-plus
+                </option>
+
+                <option value="qwen-image-edit-plus-2025-10-30" data-family="qianwen">
+                  qwen-image-edit-plus-2025-10-30
                 </option>
               </select>
             </div>
