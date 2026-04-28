@@ -121,7 +121,7 @@
                   hidden
                 >
                   <strong>gemini-3-pro-image-preview</strong>
-                  <span>Gemini 3 Pro 图片预览模型，适合更高质量的图像生成。</span>
+                  <span>Chat Completions</span>
                 </button>
 
                 <button
@@ -132,7 +132,7 @@
                   hidden
                 >
                   <strong>gemini-2.5-flash-image</strong>
-                  <span>Gemini 2.5 Flash 图片模型，速度更快，适合快速出图。</span>
+                  <span>Chat Completions</span>
                 </button>
 
                 <!-- GPT-Image 模型 -->
@@ -140,10 +140,10 @@
                   type="button"
                   class="model-card active"
                   data-family="gpt"
-                  data-model="gpt-image-2"
+                  data-model="gpt-5.5"
                 >
-                  <strong>gpt-image-2 生图</strong>
-                  <span>标准图片生成，沿用 Image API 参数体系。</span>
+                  <strong>gpt-5.5</strong>
+                  <span>Responses API</span>
                 </button>
 
                 <button
@@ -152,8 +152,78 @@
                   data-family="gpt"
                   data-model="gpt-5.4"
                 >
-                  <strong>gpt-5.4 生图</strong>
-                  <span>使用 gpt-5.4 模型生成图片，基于 Responses API。</span>
+                  <strong>gpt-5.4</strong>
+                  <span>Responses API</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="gpt"
+                  data-model="gpt-5.3"
+                >
+                  <strong>gpt-5.3</strong>
+                  <span>Responses API</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="gpt"
+                  data-model="gpt-5.2"
+                >
+                  <strong>gpt-5.2</strong>
+                  <span>Responses API</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="gpt"
+                  data-model="gpt-5.1"
+                >
+                  <strong>gpt-5.1</strong>
+                  <span>Responses API</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="gpt"
+                  data-model="gpt-5"
+                >
+                  <strong>gpt-5</strong>
+                  <span>Responses API</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="gpt"
+                  data-model="gpt-image-2"
+                >
+                  <strong>gpt-image-2</strong>
+                  <span>Images API</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="gpt"
+                  data-model="gpt-image-1"
+                >
+                  <strong>gpt-image-1</strong>
+                  <span>Images API</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="model-card"
+                  data-family="gpt"
+                  data-model="dall-e-3"
+                >
+                  <strong>dall-e-3</strong>
+                  <span>Images API</span>
                 </button>
 
                 <!-- Grok 模型 -->
@@ -165,7 +235,7 @@
                   hidden
                 >
                   <strong>grok-imagine-image</strong>
-                  <span>Grok Imagine 图片生成模型，默认走 Images API。</span>
+                  <span>Images API</span>
                 </button>
 
                 <button
@@ -176,7 +246,7 @@
                   hidden
                 >
                   <strong>grok-imagine-image-pro</strong>
-                  <span>Grok Imagine Pro 图片生成模型，默认走 Images API。</span>
+                  <span>Images API</span>
                 </button>
 
                 <!-- 豆包模型 -->
@@ -188,7 +258,7 @@
                   hidden
                 >
                   <strong>doubao-seedream-4-0-250828</strong>
-                  <span>豆包 Seedream 4.0 图片生成模型。</span>
+                  <span>文生图 / Images API</span>
                 </button>
 
                 <button
@@ -199,7 +269,7 @@
                   hidden
                 >
                   <strong>doubao-seededit-3-0-i2i-250628</strong>
-                  <span>豆包 SeedEdit 3.0 图生图 / 编辑模型。</span>
+                  <span>图生图 / 编辑</span>
                 </button>
 
                 <button
@@ -210,7 +280,7 @@
                   hidden
                 >
                   <strong>doubao-seedream-3-0-t2i-250415</strong>
-                  <span>豆包 Seedream 3.0 文生图模型。</span>
+                  <span>文生图 / Images API</span>
                 </button>
 
                 <!-- 千问模型 -->
@@ -222,7 +292,7 @@
                   hidden
                 >
                   <strong>qwen-image-edit-plus</strong>
-                  <span>千问 Qwen Image Edit Plus 图片编辑模型。</span>
+                  <span>图片编辑 / Images API</span>
                 </button>
 
                 <button
@@ -233,7 +303,7 @@
                   hidden
                 >
                   <strong>qwen-image-edit-plus-2025-10-30</strong>
-                  <span>千问 Qwen Image Edit Plus 2025-10-30 版本。</span>
+                  <span>图片编辑 / Images API</span>
                 </button>
               </div>
 
@@ -380,9 +450,9 @@
 
             <div class="current-model">
               <span>当前模型</span>
-              <strong id="currentModelText">gpt-image-2</strong>
+              <strong id="currentModelText">gpt-5.5</strong>
               <p id="currentModelDesc">
-                标准图片生成，适合测试 Prompt、尺寸和风格。
+                Responses API
               </p>
             </div>
 
@@ -405,10 +475,33 @@
                 </option>
 
                 <!-- GPT-Image -->
+                <option value="gpt-5.5" data-family="gpt" selected>
+                  gpt-5.5
+                </option>
+
+                <option value="gpt-5.4" data-family="gpt">
+                  gpt-5.4
+                </option>
+
+                <option value="gpt-5.3" data-family="gpt">
+                  gpt-5.3
+                </option>
+
+                <option value="gpt-5.2" data-family="gpt">
+                  gpt-5.2
+                </option>
+
+                <option value="gpt-5.1" data-family="gpt">
+                  gpt-5.1
+                </option>
+
+                <option value="gpt-5" data-family="gpt">
+                  gpt-5
+                </option>
+
                 <option
                   value="gpt-image-2"
                   data-family="gpt"
-                  selected
                 >
                   gpt-image-2
                 </option>
@@ -425,13 +518,6 @@
                   data-family="gpt"
                 >
                   dall-e-3
-                </option>
-
-                <option
-                  value="gpt-5.4"
-                  data-family="gpt"
-                >
-                  gpt-5.4
                 </option>
 
                 <!-- Grok -->
@@ -488,12 +574,12 @@
               <h3>结果预览</h3>
               <p id="statusText">等待生成，结果会显示在这里。</p>
             </div>
-            <span id="modelBadge" class="badge">gpt-image-2</span>
+            <span id="modelBadge" class="badge">gpt-5.5</span>
           </div>
 
           <div class="api-info">
             <span id="apiModeBadge">真实 API</span>
-            <strong id="apiInfoTitle">当前使用 gpt-image-2</strong>
+            <strong id="apiInfoTitle">当前使用 gpt-5.5</strong>
             <p id="apiInfoDesc">
               当前会调用 XuAI API 站生成图片。
             </p>
@@ -528,8 +614,8 @@
 
           <div id="gallery" class="gallery empty">
             <div class="empty-state">
-              <div class="empty-badge">gpt-image-2</div>
-              <h4>gpt-image-2 结果会显示在这里</h4>
+              <div class="empty-badge">gpt-5.5</div>
+              <h4>gpt-5.5 结果会显示在这里</h4>
               <p>填写 Prompt 后点击生成按钮。</p>
             </div>
           </div>

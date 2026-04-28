@@ -2,9 +2,17 @@ const FIXED_PROVIDER_ID = "xuai";
 const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
-const DEFAULT_IMAGE_MODEL = "gpt-image-2";
+const DEFAULT_IMAGE_MODEL = "gpt-5.5";
 const DEFAULT_NANO_MODEL = "gemini-3-pro-image-preview";
 const GPT54_MODEL = "gpt-5.4";
+const GPT5_IMAGE_MODELS = [
+  "gpt-5.5",
+  "gpt-5.4",
+  "gpt-5.3",
+  "gpt-5.2",
+  "gpt-5.1",
+  "gpt-5",
+];
 
 // 自定义绘图模型保存在浏览器本地，不会提交到服务器或 GitHub。
 // GPT/Grok-Imagine/豆包/千问默认按 Images API 调用；Nano Banana 默认按 Chat Completions 图片调用。
@@ -39,7 +47,7 @@ const CUSTOM_MODEL_FAMILY_CONFIG = {
 
 const CUSTOM_IMAGE_MODEL_RECORDS = new Map();
 
-const RESPONSES_IMAGE_MODELS = new Set([GPT54_MODEL]);
+const RESPONSES_IMAGE_MODELS = new Set(GPT5_IMAGE_MODELS);
 
 const GEMINI_IMAGE_MODELS = new Set([
   "gemini-3-pro-image-preview",
@@ -72,70 +80,100 @@ const MODEL_META = {
     description: "Gemini 2.5 Flash 图片模型，速度更快，适合快速出图。",
   },
 
-  "gpt-image-2": {
+  "gpt-5.5": {
     family: "gpt",
-    title: "gpt-image-2",
-    description: "标准图片生成，沿用 Image API 参数体系。",
-  },
-
-  "gpt-image-1": {
-    family: "gpt",
-    title: "gpt-image-1",
-    description: "OpenAI 图片生成模型。",
-  },
-
-  "dall-e-3": {
-    family: "gpt",
-    title: "dall-e-3",
-    description: "DALL·E 3 图片生成模型。",
+    title: "gpt-5.5",
+    description: "Responses API",
   },
 
   "gpt-5.4": {
     family: "gpt",
     title: "gpt-5.4",
-    description: "使用 gpt-5.4 模型生成图片，基于 Responses API。",
+    description: "Responses API",
+  },
+
+  "gpt-5.3": {
+    family: "gpt",
+    title: "gpt-5.3",
+    description: "Responses API",
+  },
+
+  "gpt-5.2": {
+    family: "gpt",
+    title: "gpt-5.2",
+    description: "Responses API",
+  },
+
+  "gpt-5.1": {
+    family: "gpt",
+    title: "gpt-5.1",
+    description: "Responses API",
+  },
+
+  "gpt-5": {
+    family: "gpt",
+    title: "gpt-5",
+    description: "Responses API",
+  },
+
+  "gpt-image-2": {
+    family: "gpt",
+    title: "gpt-image-2",
+    description: "Images API",
+  },
+
+  "gpt-image-1": {
+    family: "gpt",
+    title: "gpt-image-1",
+    description: "Images API",
+  },
+
+  "dall-e-3": {
+    family: "gpt",
+    title: "dall-e-3",
+    description: "Images API",
   },
 
   "grok-imagine-image": {
     family: "grok",
     title: "grok-imagine-image",
-    description: "Grok Imagine 图片生成模型，默认走 Images API。",
+    description: "Images API",
   },
 
   "grok-imagine-image-pro": {
     family: "grok",
     title: "grok-imagine-image-pro",
-    description: "Grok Imagine Pro 图片生成模型，默认走 Images API。",
+    description: "Images API",
   },
 
   "doubao-seedream-4-0-250828": {
     family: "doubao",
     title: "doubao-seedream-4-0-250828",
-    description: "豆包 Seedream 4.0 图片生成模型，默认走 Images API。",
+    description: "文生图 / Images API",
   },
 
   "doubao-seededit-3-0-i2i-250628": {
     family: "doubao",
     title: "doubao-seededit-3-0-i2i-250628",
-    description: "豆包 SeedEdit 3.0 图生图 / 编辑模型，默认走 Images API。",
+    description: "图生图 / 编辑",
   },
 
   "doubao-seedream-3-0-t2i-250415": {
     family: "doubao",
     title: "doubao-seedream-3-0-t2i-250415",
-    description: "豆包 Seedream 3.0 文生图模型，默认走 Images API。",
+    description: "文生图 / Images API",
   },
 
   "qwen-image-edit-plus": {
     family: "qianwen",
     title: "qwen-image-edit-plus",
-    description: "千问 Qwen Image Edit Plus 图片编辑模型，默认走 Images API。",
+    description: "图片编辑 / Images API",
   },
 
   "qwen-image-edit-plus-2025-10-30": {
     family: "qianwen",
     title: "qwen-image-edit-plus-2025-10-30",
-    description: "千问 Qwen Image Edit Plus 2025-10-30 版本，默认走 Images API。",
+    description: "图片编辑 / Images API",
   },
 };
 
@@ -817,17 +855,15 @@ function isLikelyImageModelName(model) {
 }
 
 function getAvailableModelDescription(family, apiType) {
-  const label = getModelFamilyLabel(family);
-
   if (family === "nano") {
-    return `当前 API Key 可用的 ${label} 绘图模型，使用 Chat Completions 图片请求。`;
+    return "Chat Completions";
   }
 
   if (apiType === "responses") {
-    return `当前 API Key 可用的 ${label} 绘图模型，使用 Responses API 图片工具请求。`;
+    return "Responses API";
   }
 
-  return `当前 API Key 可用的 ${label} 绘图模型，使用 Images API 图片生成请求。`;
+  return "Images API";
 }
 
 function setModelSyncStatus(message, type = "info") {
@@ -1050,16 +1086,14 @@ function getCustomModelDescription(family, apiType) {
 
 function getCustomCardDescription(family, apiType) {
   if (family === "nano") {
-    return "该 Nano Banana 模型会按 text + image 的 Chat Completions 请求发送。";
+    return "Chat Completions";
   }
-
-  const label = getModelFamilyLabel(family);
 
   if (apiType === "responses") {
-    return `该 ${label} 模型会按 Responses API 图片工具请求发送。`;
+    return "Responses API";
   }
 
-  return `该 ${label} 模型会按 Images API 图片生成请求发送。`;
+  return "Images API";
 }
 
 function setModel(model) {
@@ -1157,7 +1191,7 @@ function parseModelList(value) {
 }
 
 function isGpt54Model(model) {
-  return normalizeModelName(model) === GPT54_MODEL;
+  return GPT5_IMAGE_MODELS.includes(normalizeModelName(model));
 }
 
 function shouldHideForModel(item, model) {
