@@ -1973,18 +1973,64 @@ textarea {
 }
 
 .api-base-row {
-  max-width: 420px;
+  max-width: none;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px !important;
+  row-gap: 8px !important;
+  margin-bottom: 14px !important;
 }
 
-.api-base-row #apiBase {
+.api-key-row {
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px !important;
+  row-gap: 8px !important;
+}
+
+.api-base-row > label,
+.api-key-row > label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.api-base-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.api-base-wrap #apiBase {
   max-width: 420px;
   min-height: 38px !important;
   padding: 9px 14px !important;
 }
 
+.api-base-note {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.api-key-row .key-wrap {
+  min-width: 0;
+}
+
 @media (max-width: 720px) {
   .api-base-row,
-  .api-base-row #apiBase {
+  .api-key-row {
+    grid-template-columns: 1fr;
+  }
+
+  .api-base-wrap {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .api-base-wrap #apiBase {
     max-width: 100%;
   }
 }

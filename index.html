@@ -67,24 +67,27 @@
 
             <div class="field-row api-base-row">
               <label>API Base URL</label>
-              <input
-                id="apiBase"
-                type="text"
-                value="https://api.xuai.chat"
-                readonly
-		disabled
-                aria-disabled="true"
-              />
+              <div class="api-base-wrap">
+                <input
+                  id="apiBase"
+                  type="text"
+                  value="https://api.xuai.chat"
+                  readonly
+                  disabled
+                  aria-disabled="true"
+                />
+                <span class="api-base-note">无需修改</span>
+              </div>
             </div>
 
-            <div class="field-row">
+            <div class="field-row api-key-row">
               <label>API Key</label>
               <div class="key-wrap">
                 <input
                   id="apiKey"
                   type="password"
                   autocomplete="off"
-                  placeholder="请在本地输入，不要提交到 GitHub"
+                  placeholder="填入个人APIKey"
                 />
                 <button id="toggleKeyBtn" type="button">显示</button>
               </div>
