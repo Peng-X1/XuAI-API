@@ -257,6 +257,8 @@ const IMAGE_EDIT_ENABLED = false;
 const HISTORY_STORAGE_KEY = "xuai-task-history";
 const HIDDEN_TOOL_MODEL_STORAGE_KEY = "xuai-hidden-tool-models";
 const HIDDEN_TOOL_MODELS = loadHiddenToolModels();
+const TOOL_SWITCH_OUT_MS = 480;
+const TOOL_SWITCH_IN_MS = 1300;
 const TOOL_META = {
   image: {
     title: "图片生成",
@@ -296,6 +298,8 @@ let realtimeLocalStream = null;
 let toolApiKeyInputs = [];
 let toolModelRefreshBtns = [];
 let historyFilter = "all";
+let activeTool = "image";
+let toolSwitchTimers = [];
 
 // 生成中提示框相关 DOM。
 // 如果 index.html 暂时没加这些节点，不会报错，只是不显示提示框。
@@ -498,35 +502,85 @@ function bindEvents() {
 
 function switchTool(tool) {
   const currentPanel = toolPanels.find((panel) => !panel.hidden);
-  const toolChanged = currentPanel?.dataset.toolPanel !== tool;
+  const nextPanel = toolPanels.find((panel) => panel.dataset.toolPanel === tool);
+  const toolChanged = activeTool !== tool;
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+  if (!toolChanged) {
+    if (tool === "history") {
+      renderHistory();
+    }
+    return;
+  }
+
+  clearToolSwitchTimers();
 
   navItems.forEach((item) => {
     item.classList.toggle("active", item.dataset.tool === tool);
   });
 
   toolPanels.forEach((panel) => {
-    const isActive = panel.dataset.toolPanel === tool;
-
-    panel.hidden = !isActive;
-    panel.classList.remove("is-entering");
-
-    if (isActive && toolChanged) {
-      void panel.offsetWidth;
-      panel.classList.add("is-entering");
-    }
+    panel.classList.remove("is-entering", "is-leaving");
   });
 
-  syncToolHeader(tool);
+  if (reduceMotion || !currentPanel || !nextPanel) {
+    toolPanels.forEach((panel) => {
+      panel.hidden = panel.dataset.toolPanel !== tool;
+    });
 
-  if (hero && toolChanged) {
-    hero.classList.remove("is-entering");
+    activeTool = tool;
+    syncToolHeader(tool);
+
+    if (tool === "history") {
+      renderHistory();
+    }
+    return;
+  }
+
+  currentPanel.classList.add("is-leaving");
+
+  if (hero) {
+    hero.classList.remove("is-entering", "is-leaving");
     void hero.offsetWidth;
-    hero.classList.add("is-entering");
+    hero.classList.add("is-leaving");
   }
 
-  if (tool === "history") {
-    renderHistory();
-  }
+  toolSwitchTimers.push(
+    window.setTimeout(() => {
+      currentPanel.hidden = true;
+      currentPanel.classList.remove("is-leaving");
+
+      nextPanel.hidden = false;
+      nextPanel.classList.remove("is-leaving");
+      void nextPanel.offsetWidth;
+      nextPanel.classList.add("is-entering");
+
+      activeTool = tool;
+      syncToolHeader(tool);
+
+      if (hero) {
+        hero.classList.remove("is-leaving");
+        void hero.offsetWidth;
+        hero.classList.add("is-entering");
+      }
+
+      if (tool === "history") {
+        renderHistory();
+      }
+    }, TOOL_SWITCH_OUT_MS)
+  );
+
+  toolSwitchTimers.push(
+    window.setTimeout(() => {
+      nextPanel.classList.remove("is-entering");
+      hero?.classList.remove("is-entering", "is-leaving");
+    }, TOOL_SWITCH_OUT_MS + TOOL_SWITCH_IN_MS)
+  );
+}
+
+function clearToolSwitchTimers() {
+  toolSwitchTimers.forEach((timer) => window.clearTimeout(timer));
+  toolSwitchTimers = [];
 }
 
 function decorateToolIcons() {

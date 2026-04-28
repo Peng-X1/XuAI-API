@@ -2316,17 +2316,26 @@ textarea {
 }
 
 .tool-workspace.is-entering {
-  animation: toolPanelIn 1.18s cubic-bezier(0.22, 0.72, 0.18, 1) both;
+  animation: toolPanelIn 1.3s cubic-bezier(0.22, 0.72, 0.18, 1) both;
 }
 
 .tool-workspace.is-entering > .panel,
 .tool-workspace.is-entering > .history-filters,
 .tool-workspace.is-entering > .history-list {
-  animation: toolContentIn 1.24s cubic-bezier(0.22, 0.72, 0.18, 1) 0.12s both;
+  animation: toolContentIn 1.3s cubic-bezier(0.22, 0.72, 0.18, 1) 0.16s both;
+}
+
+.tool-workspace.is-leaving {
+  animation: toolPanelOut 0.48s ease both;
+  pointer-events: none;
 }
 
 .hero.is-entering {
-  animation: heroHeaderIn 1.05s cubic-bezier(0.22, 0.72, 0.18, 1) both;
+  animation: heroHeaderIn 1.12s cubic-bezier(0.22, 0.72, 0.18, 1) both;
+}
+
+.hero.is-leaving {
+  animation: heroHeaderOut 0.48s ease both;
 }
 
 @keyframes toolPanelIn {
@@ -2353,6 +2362,18 @@ textarea {
   }
 }
 
+@keyframes toolPanelOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
 @keyframes heroHeaderIn {
   from {
     opacity: 0;
@@ -2365,12 +2386,26 @@ textarea {
   }
 }
 
+@keyframes heroHeaderOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tool-workspace.is-entering,
+  .tool-workspace.is-leaving,
   .tool-workspace.is-entering > .panel,
   .tool-workspace.is-entering > .history-filters,
   .tool-workspace.is-entering > .history-list,
-  .hero.is-entering {
+  .hero.is-entering,
+  .hero.is-leaving {
     animation: none !important;
   }
 }
