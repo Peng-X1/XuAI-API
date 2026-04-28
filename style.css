@@ -1976,6 +1976,10 @@ textarea {
   display: none !important;
 }
 
+.api-info[hidden] {
+  display: none !important;
+}
+
 .api-base-row {
   max-width: none;
   grid-template-columns: 128px minmax(0, 1fr);
