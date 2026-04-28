@@ -1967,6 +1967,28 @@ textarea {
   }
 }
 
+/* API 连接信息：隐藏固定提供商，只保留较短的 Base URL 展示 */
+.provider-row[hidden] {
+  display: none !important;
+}
+
+.api-base-row {
+  max-width: 420px;
+}
+
+.api-base-row #apiBase {
+  max-width: 420px;
+  min-height: 38px !important;
+  padding: 9px 14px !important;
+}
+
+@media (max-width: 720px) {
+  .api-base-row,
+  .api-base-row #apiBase {
+    max-width: 100%;
+  }
+}
+
 /* 隐藏当前模型分组之外的模型卡片 */
 .model-card[hidden] {
   display: none !important;
