@@ -2280,3 +2280,33 @@ textarea {
 .model-card[hidden] {
   display: none !important;
 }
+
+.model-card {
+  position: relative;
+}
+
+.model-card__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--muted);
+  font-size: 16px !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  transition: 0.16s ease;
+}
+
+.model-card__close:hover,
+.model-card__close:focus-visible {
+  border-color: rgba(248, 113, 113, 0.75);
+  background: rgba(127, 29, 29, 0.55);
+  color: #fff;
+  outline: none;
+}

@@ -140,66 +140,6 @@
                   type="button"
                   class="model-card active"
                   data-family="gpt"
-                  data-model="gpt-5.5"
-                >
-                  <strong>gpt-5.5</strong>
-                  <span>Responses API</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
-                  data-model="gpt-5.4"
-                >
-                  <strong>gpt-5.4</strong>
-                  <span>Responses API</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
-                  data-model="gpt-5.3"
-                >
-                  <strong>gpt-5.3</strong>
-                  <span>Responses API</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
-                  data-model="gpt-5.2"
-                >
-                  <strong>gpt-5.2</strong>
-                  <span>Responses API</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
-                  data-model="gpt-5.1"
-                >
-                  <strong>gpt-5.1</strong>
-                  <span>Responses API</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
-                  data-model="gpt-5"
-                >
-                  <strong>gpt-5</strong>
-                  <span>Responses API</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
                   data-model="gpt-image-2"
                 >
                   <strong>gpt-image-2</strong>
@@ -450,9 +390,9 @@
 
             <div class="current-model">
               <span>当前模型</span>
-              <strong id="currentModelText">gpt-5.5</strong>
+              <strong id="currentModelText">gpt-image-2</strong>
               <p id="currentModelDesc">
-                Responses API
+                Images API
               </p>
             </div>
 
@@ -475,33 +415,10 @@
                 </option>
 
                 <!-- GPT-Image -->
-                <option value="gpt-5.5" data-family="gpt" selected>
-                  gpt-5.5
-                </option>
-
-                <option value="gpt-5.4" data-family="gpt">
-                  gpt-5.4
-                </option>
-
-                <option value="gpt-5.3" data-family="gpt">
-                  gpt-5.3
-                </option>
-
-                <option value="gpt-5.2" data-family="gpt">
-                  gpt-5.2
-                </option>
-
-                <option value="gpt-5.1" data-family="gpt">
-                  gpt-5.1
-                </option>
-
-                <option value="gpt-5" data-family="gpt">
-                  gpt-5
-                </option>
-
                 <option
                   value="gpt-image-2"
                   data-family="gpt"
+                  selected
                 >
                   gpt-image-2
                 </option>
@@ -574,12 +491,12 @@
               <h3>结果预览</h3>
               <p id="statusText">等待生成，结果会显示在这里。</p>
             </div>
-            <span id="modelBadge" class="badge">gpt-5.5</span>
+            <span id="modelBadge" class="badge">gpt-image-2</span>
           </div>
 
           <div class="api-info" hidden>
             <span id="apiModeBadge">真实 API</span>
-            <strong id="apiInfoTitle">当前使用 gpt-5.5</strong>
+            <strong id="apiInfoTitle">当前使用 gpt-image-2</strong>
             <p id="apiInfoDesc">
               当前会调用 XuAI API 站生成图片。
             </p>
@@ -614,8 +531,8 @@
 
           <div id="gallery" class="gallery empty">
             <div class="empty-state">
-              <div class="empty-badge">gpt-5.5</div>
-              <h4>gpt-5.5 结果会显示在这里</h4>
+              <div class="empty-badge">gpt-image-2</div>
+              <h4>gpt-image-2 结果会显示在这里</h4>
               <p>填写 Prompt 后点击生成按钮。</p>
             </div>
           </div>

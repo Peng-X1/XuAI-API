@@ -2,10 +2,9 @@ const FIXED_PROVIDER_ID = "xuai";
 const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
-const DEFAULT_IMAGE_MODEL = "gpt-5.5";
+const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 const DEFAULT_NANO_MODEL = "gemini-3-pro-image-preview";
-const GPT54_MODEL = "gpt-5.4";
-const GPT5_IMAGE_MODELS = [
+const GPT5_IMAGE_MODEL_ORDER = [
   "gpt-5.5",
   "gpt-5.4",
   "gpt-5.3",
@@ -17,6 +16,8 @@ const GPT5_IMAGE_MODELS = [
 // 自定义绘图模型保存在浏览器本地，不会提交到服务器或 GitHub。
 // GPT/Grok-Imagine/豆包/千问默认按 Images API 调用；Nano Banana 默认按 Chat Completions 图片调用。
 const CUSTOM_MODEL_STORAGE_KEY = "xuai-custom-image-models";
+const HIDDEN_IMAGE_MODEL_STORAGE_KEY = "xuai-hidden-image-models";
+const HIDDEN_IMAGE_MODELS = new Set(loadHiddenImageModels());
 const CUSTOM_MODEL_FAMILY_CONFIG = {
   nano: {
     label: "Nano Banana",
@@ -47,7 +48,8 @@ const CUSTOM_MODEL_FAMILY_CONFIG = {
 
 const CUSTOM_IMAGE_MODEL_RECORDS = new Map();
 
-const RESPONSES_IMAGE_MODELS = new Set(GPT5_IMAGE_MODELS);
+// GPT-5 系列不再作为固定预设，只在刷新模型接口返回后加入 Responses API 列表。
+const RESPONSES_IMAGE_MODELS = new Set();
 
 const GEMINI_IMAGE_MODELS = new Set([
   "gemini-3-pro-image-preview",
@@ -78,42 +80,6 @@ const MODEL_META = {
     family: "nano",
     title: "gemini-2.5-flash-image",
     description: "Gemini 2.5 Flash 图片模型，速度更快，适合快速出图。",
-  },
-
-  "gpt-5.5": {
-    family: "gpt",
-    title: "gpt-5.5",
-    description: "Responses API",
-  },
-
-  "gpt-5.4": {
-    family: "gpt",
-    title: "gpt-5.4",
-    description: "Responses API",
-  },
-
-  "gpt-5.3": {
-    family: "gpt",
-    title: "gpt-5.3",
-    description: "Responses API",
-  },
-
-  "gpt-5.2": {
-    family: "gpt",
-    title: "gpt-5.2",
-    description: "Responses API",
-  },
-
-  "gpt-5.1": {
-    family: "gpt",
-    title: "gpt-5.1",
-    description: "Responses API",
-  },
-
-  "gpt-5": {
-    family: "gpt",
-    title: "gpt-5",
-    description: "Responses API",
   },
 
   "gpt-image-2": {
@@ -740,6 +706,8 @@ function registerAvailableImageModels(modelNames) {
   const models = [];
 
   modelNames.forEach((model) => {
+    if (HIDDEN_IMAGE_MODELS.has(normalizeModelName(model))) return;
+
     const family = inferImageFamilyFromModelName(model);
 
     if (!family) return;
@@ -747,12 +715,17 @@ function registerAvailableImageModels(modelNames) {
     registerAvailableImageModel({
       model,
       family,
-      apiType: CUSTOM_MODEL_FAMILY_CONFIG[family]?.apiType || "images",
+      apiType: isGpt5ImageCandidate(model)
+        ? "responses"
+        : CUSTOM_MODEL_FAMILY_CONFIG[family]?.apiType || "images",
     });
 
     models.push(model);
     byFamily[family] = (byFamily[family] || 0) + 1;
   });
+
+  sortModelCards();
+  sortModelOptions();
 
   return {
     total: models.length,
@@ -831,6 +804,7 @@ function inferImageFamilyFromModelName(model) {
   }
 
   if (
+    isGpt5ImageCandidate(value) ||
     value.includes("gpt-image") ||
     value.includes("dall-e") ||
     value.includes("dalle")
@@ -845,6 +819,7 @@ function isLikelyImageModelName(model) {
   const value = String(model || "").toLowerCase();
 
   return (
+    isGpt5ImageCandidate(value) ||
     value.includes("image") ||
     value.includes("imagine") ||
     value.includes("dall-e") ||
@@ -852,6 +827,10 @@ function isLikelyImageModelName(model) {
     value.includes("seedream") ||
     value.includes("seededit")
   );
+}
+
+function isGpt5ImageCandidate(model) {
+  return /^gpt-5(?:\.[1-5])?$/.test(normalizeModelName(model).toLowerCase());
 }
 
 function getAvailableModelDescription(family, apiType) {
@@ -967,6 +946,9 @@ function ensureCustomModelCard(model, family, apiType) {
   const cards = document.querySelector(".cards");
   if (!cards) return;
 
+  const meta = MODEL_META[model] || {};
+  const isDiscovered = meta.discovered === true;
+
   const existingCard = $$(".model-card").find(
     (card) => normalizeModelName(card.dataset.model) === model
   );
@@ -974,6 +956,8 @@ function ensureCustomModelCard(model, family, apiType) {
   if (existingCard) {
     existingCard.dataset.family = family;
     existingCard.dataset.apiType = apiType;
+    existingCard.dataset.customModel = meta.custom ? "true" : "";
+    existingCard.dataset.discoveredModel = isDiscovered ? "true" : "";
     existingCard.hidden = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL) !== family;
 
     const title = existingCard.querySelector("strong");
@@ -986,6 +970,7 @@ function ensureCustomModelCard(model, family, apiType) {
       desc.textContent = getCustomCardDescription(family, apiType);
     }
 
+    syncDiscoveredModelCloseButton(existingCard, isDiscovered);
     bindModelCard(existingCard);
     return;
   }
@@ -996,7 +981,8 @@ function ensureCustomModelCard(model, family, apiType) {
   card.dataset.family = family;
   card.dataset.model = model;
   card.dataset.apiType = apiType;
-  card.dataset.customModel = "true";
+  card.dataset.customModel = meta.custom ? "true" : "";
+  card.dataset.discoveredModel = isDiscovered ? "true" : "";
   card.hidden = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL) !== family;
 
   const title = document.createElement("strong");
@@ -1006,8 +992,101 @@ function ensureCustomModelCard(model, family, apiType) {
   desc.textContent = getCustomCardDescription(family, apiType);
 
   card.append(title, desc);
+  syncDiscoveredModelCloseButton(card, isDiscovered);
   cards.appendChild(card);
   bindModelCard(card);
+}
+
+function syncDiscoveredModelCloseButton(card, isDiscovered) {
+  const existingButton = card.querySelector(".model-card__close");
+
+  if (!isDiscovered) {
+    existingButton?.remove();
+    return;
+  }
+
+  if (existingButton) return;
+
+  const button = document.createElement("span");
+  button.role = "button";
+  button.tabIndex = 0;
+  button.className = "model-card__close";
+  button.setAttribute("aria-label", "隐藏这个刷新出来的模型");
+  button.title = "隐藏这个刷新出来的模型";
+  button.textContent = "×";
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    hideImageModel(normalizeModelName(card.dataset.model));
+  });
+  button.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    hideImageModel(normalizeModelName(card.dataset.model));
+  });
+
+  card.appendChild(button);
+}
+
+function hideImageModel(model) {
+  model = normalizeModelName(model);
+  const meta = MODEL_META[model];
+
+  if (!model || !meta?.discovered) return;
+
+  HIDDEN_IMAGE_MODELS.add(model);
+  saveHiddenImageModels();
+  const wasActive = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL) === model;
+
+  $$("[data-model]").forEach((element) => {
+    if (normalizeModelName(element.dataset.model) === model) {
+      element.remove();
+    }
+  });
+
+  if (modelSelect) {
+    Array.from(modelSelect.options)
+      .filter((option) => normalizeModelName(option.value) === model)
+      .forEach((option) => option.remove());
+  }
+
+  delete MODEL_META[model];
+  RESPONSES_IMAGE_MODELS.delete(model);
+  CHAT_COMPLETIONS_IMAGE_MODELS.delete(model);
+  GEMINI_IMAGE_MODELS.delete(model);
+
+  const family = meta.family || "gpt";
+  const activeModel = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
+
+  if (wasActive) {
+    setModel(findFirstModelInFamily(family) || MODEL_FAMILY_DEFAULTS[family] || DEFAULT_IMAGE_MODEL);
+  } else {
+    applyModelFamilyUi(family, activeModel);
+  }
+
+  sortModelCards();
+  sortModelOptions();
+  setModelSyncStatus(`已隐藏模型 ${model}，刷新时不会再显示。`, "success");
+}
+
+function findFirstModelInFamily(family) {
+  const card = $$(".model-card").find((item) => {
+    const model = normalizeModelName(item.dataset.model);
+    const meta = getModelMeta(model);
+    return (item.dataset.family || meta.family) === family && !HIDDEN_IMAGE_MODELS.has(model);
+  });
+
+  if (card) return normalizeModelName(card.dataset.model);
+
+  const option = Array.from(modelSelect?.options || []).find((item) => {
+    const model = normalizeModelName(item.value);
+    const meta = getModelMeta(model);
+    return (item.dataset.family || meta.family) === family && !HIDDEN_IMAGE_MODELS.has(model);
+  });
+
+  return normalizeModelName(option?.value || "");
 }
 
 function restoreCustomImageModels() {
@@ -1041,6 +1120,89 @@ function saveCustomImageModels() {
   }));
 
   localStorage.setItem(CUSTOM_MODEL_STORAGE_KEY, JSON.stringify(records));
+}
+
+function loadHiddenImageModels() {
+  try {
+    const value = JSON.parse(
+      localStorage.getItem(HIDDEN_IMAGE_MODEL_STORAGE_KEY) || "[]"
+    );
+
+    if (Array.isArray(value)) {
+      return value.map(normalizeModelName).filter(Boolean);
+    }
+  } catch {
+    // 本地隐藏列表损坏时直接忽略，避免影响页面启动。
+  }
+
+  return [];
+}
+
+function saveHiddenImageModels() {
+  localStorage.setItem(
+    HIDDEN_IMAGE_MODEL_STORAGE_KEY,
+    JSON.stringify(Array.from(HIDDEN_IMAGE_MODELS))
+  );
+}
+
+function getModelSortRank(model, family) {
+  model = normalizeModelName(model);
+
+  if (family === "gpt") {
+    const gpt5Rank = GPT5_IMAGE_MODEL_ORDER.indexOf(model);
+    if (gpt5Rank >= 0) return gpt5Rank;
+
+    const gptImageRank = ["gpt-image-2", "gpt-image-1", "dall-e-3"].indexOf(model);
+    if (gptImageRank >= 0) return 100 + gptImageRank;
+  }
+
+  return 1000;
+}
+
+function getFamilySortRank(family) {
+  const rank = ["nano", "gpt", "grok", "doubao", "qianwen"].indexOf(family);
+  return rank >= 0 ? rank : 999;
+}
+
+function sortModelCards() {
+  const cards = document.querySelector(".cards");
+  if (!cards) return;
+
+  Array.from(cards.querySelectorAll(".model-card"))
+    .sort((a, b) => {
+      const aFamily = a.dataset.family || getModelFamily(a.dataset.model);
+      const bFamily = b.dataset.family || getModelFamily(b.dataset.model);
+
+      if (aFamily !== bFamily) {
+        return getFamilySortRank(aFamily) - getFamilySortRank(bFamily);
+      }
+
+      return (
+        getModelSortRank(a.dataset.model, aFamily) -
+        getModelSortRank(b.dataset.model, bFamily)
+      );
+    })
+    .forEach((card) => cards.appendChild(card));
+}
+
+function sortModelOptions() {
+  if (!modelSelect) return;
+
+  Array.from(modelSelect.options)
+    .sort((a, b) => {
+      const aFamily = a.dataset.family || getModelFamily(a.value);
+      const bFamily = b.dataset.family || getModelFamily(b.value);
+
+      if (aFamily !== bFamily) {
+        return getFamilySortRank(aFamily) - getFamilySortRank(bFamily);
+      }
+
+      return (
+        getModelSortRank(a.value, aFamily) -
+        getModelSortRank(b.value, bFamily)
+      );
+    })
+    .forEach((option) => modelSelect.appendChild(option));
 }
 
 function normalizeCustomModelFamily(family) {
@@ -1099,7 +1261,7 @@ function getCustomCardDescription(family, apiType) {
 function setModel(model) {
   model = normalizeModelName(model);
 
-  if (!model) {
+  if (!model || HIDDEN_IMAGE_MODELS.has(model) || !MODEL_META[model]) {
     model = DEFAULT_IMAGE_MODEL;
   }
 
@@ -1191,7 +1353,7 @@ function parseModelList(value) {
 }
 
 function isGpt54Model(model) {
-  return GPT5_IMAGE_MODELS.includes(normalizeModelName(model));
+  return RESPONSES_IMAGE_MODELS.has(normalizeModelName(model));
 }
 
 function shouldHideForModel(item, model) {
