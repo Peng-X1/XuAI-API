@@ -226,6 +226,7 @@ const transcriptionResult = $("#transcriptionResult");
 const transcriptionDebugBox = $("#transcriptionDebugBox");
 const transcriptionModelCards = $("#transcriptionModelCards");
 const transcriptionModelSyncText = $("#transcriptionModelSyncText");
+const transcriptionStatusBadge = $('[data-status-badge="transcription"]');
 
 const realtimeModelInput = $("#realtimeModel");
 const realtimeInstructionsInput = $("#realtimeInstructions");
@@ -237,6 +238,7 @@ const realtimeLog = $("#realtimeLog");
 const realtimeDebugBox = $("#realtimeDebugBox");
 const realtimeModelCards = $("#realtimeModelCards");
 const realtimeModelSyncText = $("#realtimeModelSyncText");
+const realtimeStatusBadge = $('[data-status-badge="realtime"]');
 
 const ttsForm = $("#ttsForm");
 const ttsModelInput = $("#ttsModel");
@@ -248,6 +250,7 @@ const ttsResult = $("#ttsResult");
 const ttsDebugBox = $("#ttsDebugBox");
 const ttsModelCards = $("#ttsModelCards");
 const ttsModelSyncText = $("#ttsModelSyncText");
+const ttsStatusBadge = $('[data-status-badge="tts"]');
 
 const historyList = $("#historyList");
 const historyStatusText = $("#historyStatusText");
@@ -262,32 +265,32 @@ const TOOL_SWITCH_IN_MS = 233;
 const TOOL_META = {
   image: {
     title: "图片生成",
-    desc: "使用 AI 模型生成高质量图片",
+    desc: "输入画面描述，调用绘图模型生成高质量图片。",
     icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10" r="1.5"></circle><path d="m3 16 5-5 4 4 2.5-2.5L21 18"></path></svg>',
   },
   video: {
     title: "视频生成",
-    desc: "用提示词生成视频，不需要按提供商分板块",
+    desc: "输入镜头、风格和时长描述，选择可用视频模型后提交任务。",
     icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="13" height="10" rx="2"></rect><path d="m16 11 5-3v8l-5-3"></path></svg>',
   },
   transcription: {
     title: "音频转文字",
-    desc: "上传音频或视频文件并转写为文字",
+    desc: "上传音频或视频文件，将语音内容转写成可复制文本。",
     icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 19v3"></path><path d="M8 22h8"></path></svg>',
   },
   realtime: {
     title: "实时语音",
-    desc: "通过浏览器麦克风连接实时语音模型",
+    desc: "通过浏览器麦克风连接实时语音模型，进行低延迟对话。",
     icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 0 1 0 8"></path><path d="M8.5 5.5a8 8 0 0 1 0 13"></path><path d="M15.5 5.5a8 8 0 0 1 0 13"></path><circle cx="12" cy="12" r="1"></circle></svg>',
   },
   tts: {
     title: "文字转语音",
-    desc: "把文本合成为可播放和下载的音频",
+    desc: "输入文本并选择音色，合成为可播放和下载的语音。",
     icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"></path><path d="M16 9a5 5 0 0 1 0 6"></path><path d="M19 6a9 9 0 0 1 0 12"></path></svg>',
   },
   history: {
     title: "历史记录",
-    desc: "查看保存在本地浏览器中的最近任务",
+    desc: "查看、筛选和重新加载保存在本地浏览器中的最近任务。",
     icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path><path d="M12 7v5l3 2"></path></svg>',
   },
 };
@@ -300,6 +303,8 @@ let toolModelRefreshBtns = [];
 let historyFilter = "all";
 let activeTool = "image";
 let toolSwitchTimers = [];
+const taskIndicators = {};
+const taskStatusBadges = {};
 
 // 生成中提示框相关 DOM。
 // 如果 index.html 暂时没加这些节点，不会报错，只是不显示提示框。
@@ -359,6 +364,7 @@ function init() {
   initSharedApiKeyInputs();
   normalizeToolModelCards();
   initApiConnectionUi();
+  initTaskStatusUi();
 
   const savedModel = normalizeModelName(
     localStorage.getItem("xuai-model") || DEFAULT_IMAGE_MODEL
@@ -743,13 +749,12 @@ function getToolModelConfig(tool) {
   const configs = {
     video: {
       label: "视频",
-      defaultModel: "sora-2",
+      defaultModel: "",
       tag: "Video API",
       input: videoModelInput,
       cards: videoModelCards,
       syncText: videoModelSyncText,
       statusText: videoStatusText,
-      badge: videoModelBadge,
     },
     transcription: {
       label: "转写",
@@ -803,7 +808,18 @@ function setToolModel(tool, model) {
   const config = getToolModelConfig(tool);
   model = normalizeModelName(model);
 
-  if (!config || !model) return;
+  if (!config) return;
+
+  if (!model) {
+    if (config.input) {
+      config.input.value = "";
+    }
+
+    config.cards?.querySelectorAll(".tool-model-card").forEach((card) => {
+      card.classList.remove("active");
+    });
+    return;
+  }
 
   if (isToolModelHidden(tool, model)) {
     model = findFirstToolModel(tool) || config.defaultModel;
@@ -819,10 +835,6 @@ function setToolModel(tool, model) {
       normalizeModelName(card.dataset.toolModel) === model
     );
   });
-
-  if (config.badge) {
-    config.badge.textContent = model;
-  }
 }
 
 function syncToolModelCloseButton(card) {
@@ -982,6 +994,8 @@ function registerToolModels(tool, models) {
   const currentModel = normalizeModelName(config.input?.value || "");
   if (currentModel) {
     setToolModel(tool, currentModel);
+  } else if (models[0]) {
+    setToolModel(tool, models[0]);
   }
 }
 
@@ -2092,10 +2106,6 @@ function setModel(model) {
     currentModelDesc.textContent = meta.description || "";
   }
 
-  if (modelBadge) {
-    modelBadge.textContent = model;
-  }
-
   updateEmptyPreviewState(model);
   applyModelUiRestrictions(model);
 
@@ -2107,13 +2117,12 @@ function setModel(model) {
 function updateEmptyPreviewState(model) {
   if (!gallery?.classList.contains("empty")) return;
 
-  // 空状态是初始 HTML，不会随 modelBadge 自动变化，所以切换模型时手动同步。
   if (emptyStateBadge) {
-    emptyStateBadge.textContent = model;
+    emptyStateBadge.textContent = "准备就绪";
   }
 
   if (emptyStateTitle) {
-    emptyStateTitle.textContent = `${model} 结果会显示在这里`;
+    emptyStateTitle.textContent = "图片结果会显示在这里";
   }
 
   if (emptyStateDesc) {
@@ -2387,7 +2396,7 @@ async function handleGenerate(event) {
 
     finishGenerationIndicator(
       "success",
-      `模型 ${model} 已完成${isEditMode ? "图片编辑" : "图片生成"}。`
+      `${isEditMode ? "图片编辑" : "图片生成"}已完成，结果已显示在下方。`
     );
 
     setStatus(isEditMode ? "图片编辑完成。" : "图片生成完成。", "success");
@@ -3434,6 +3443,7 @@ function setStatus(message, type = "info") {
   if (!statusText) return;
 
   statusText.textContent = message;
+  setTaskStatusBadge("image", type);
 
   const colorMap = {
     info: "",
@@ -3521,7 +3531,7 @@ async function handleVideoGenerate(event) {
 
   const key = getApiKeyValue();
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const model = videoModelInput?.value.trim() || "sora-2";
+  const model = videoModelInput?.value.trim() || "";
   const prompt = videoPromptInput?.value.trim() || "";
   const size = videoSizeSelect?.value || "1280x720";
   const seconds = Number(videoSecondsInput?.value || 5);
@@ -3538,17 +3548,24 @@ async function handleVideoGenerate(event) {
     return;
   }
 
+  if (!model) {
+    setToolStatus(videoStatusText, "请先刷新并选择可用视频模型。", "warning");
+    videoModelSyncText?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
   if (videoGenerateBtn) {
     videoGenerateBtn.disabled = true;
     videoGenerateBtn.textContent = "生成中...";
   }
 
-  if (videoModelBadge) {
-    videoModelBadge.textContent = model;
-  }
-
   try {
     setToolStatus(videoStatusText, "正在提交视频生成任务...", "loading");
+    startToolTaskIndicator(
+      "video",
+      "正在生成视频，请不要刷新页面或关闭当前标签页。",
+      "视频任务已经提交，正在等待接口返回结果。"
+    );
     const result = await callVideoGenerationApi({
       baseURL,
       key,
@@ -3570,9 +3587,11 @@ async function handleVideoGenerate(event) {
       preview: result.videos[0],
     });
     setToolStatus(videoStatusText, "视频生成完成。", "success");
+    finishToolTaskIndicator("video", "success", "视频生成完成，结果已显示在下方。");
   } catch (error) {
     console.error(error);
     setToolStatus(videoStatusText, error.message || "视频生成失败。", "error");
+    finishToolTaskIndicator("video", "error", error.message || "视频生成失败，请查看调试信息。");
     showToolDebug(videoDebugBox, error.raw || { error: error.message });
   } finally {
     if (videoGenerateBtn) {
@@ -3724,6 +3743,11 @@ async function handleTranscription(event) {
 
   try {
     setToolStatus(transcriptionStatusText, "正在上传并转写音频...", "loading");
+    startToolTaskIndicator(
+      "transcription",
+      "正在转写音频，请不要刷新页面或关闭当前标签页。",
+      "音频文件正在上传并交给模型转写，较长文件可能需要更多时间。"
+    );
     const result = await callTranscriptionApi({
       baseURL,
       key,
@@ -3741,9 +3765,11 @@ async function handleTranscription(event) {
       text: result.text,
     });
     setToolStatus(transcriptionStatusText, "音频转写完成。", "success");
+    finishToolTaskIndicator("transcription", "success", "音频转写完成，文本已显示在下方。");
   } catch (error) {
     console.error(error);
     setToolStatus(transcriptionStatusText, error.message || "音频转写失败。", "error");
+    finishToolTaskIndicator("transcription", "error", error.message || "音频转写失败，请查看调试信息。");
     showToolDebug(transcriptionDebugBox, error.raw || { error: error.message });
   } finally {
     if (transcriptionBtn) {
@@ -3833,6 +3859,11 @@ async function handleTextToSpeech(event) {
 
   try {
     setToolStatus(ttsStatusText, "正在生成语音...", "loading");
+    startToolTaskIndicator(
+      "tts",
+      "正在生成语音，请不要刷新页面或关闭当前标签页。",
+      "文本已经提交，正在等待语音合成结果。"
+    );
     const result = await callTextToSpeechApi({
       baseURL,
       key,
@@ -3851,9 +3882,11 @@ async function handleTextToSpeech(event) {
       preview: result.audioUrl,
     });
     setToolStatus(ttsStatusText, "语音生成完成。", "success");
+    finishToolTaskIndicator("tts", "success", "语音生成完成，播放器已显示在下方。");
   } catch (error) {
     console.error(error);
     setToolStatus(ttsStatusText, error.message || "语音生成失败。", "error");
+    finishToolTaskIndicator("tts", "error", error.message || "语音生成失败，请查看调试信息。");
     showToolDebug(ttsDebugBox, error.raw || { error: error.message });
   } finally {
     if (ttsBtn) {
@@ -3931,6 +3964,11 @@ async function startRealtimeVoice() {
 
   try {
     setToolStatus(realtimeStatusText, "正在请求麦克风权限...", "loading");
+    startToolTaskIndicator(
+      "realtime",
+      "正在连接实时语音，请不要刷新页面或关闭当前标签页。",
+      "浏览器正在请求麦克风权限并建立实时语音连接。"
+    );
     realtimeLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     realtimePeerConnection = new RTCPeerConnection();
 
@@ -3998,6 +4036,7 @@ async function startRealtimeVoice() {
     if (realtimeStopBtn) realtimeStopBtn.disabled = false;
 
     setToolStatus(realtimeStatusText, "实时语音已连接。", "success");
+    finishToolTaskIndicator("realtime", "success", "实时语音已连接，可以开始对话。");
     showToolDebug(realtimeDebugBox, {
       request_url: url,
       model,
@@ -4008,6 +4047,7 @@ async function startRealtimeVoice() {
     console.error(error);
     stopRealtimeVoice();
     setToolStatus(realtimeStatusText, error.message || "实时语音连接失败。", "error");
+    finishToolTaskIndicator("realtime", "error", error.message || "实时语音连接失败，请查看调试信息。");
     showToolDebug(realtimeDebugBox, error.raw || { error: error.message });
   }
 }
@@ -4160,6 +4200,7 @@ function setToolStatus(element, message, type = "info") {
   if (!element) return;
 
   element.textContent = message;
+  setTaskStatusBadge(getToolByStatusElement(element), type);
   const colorMap = {
     info: "",
     loading: "var(--primary)",
@@ -4168,6 +4209,157 @@ function setToolStatus(element, message, type = "info") {
     error: "var(--danger)",
   };
   element.style.color = colorMap[type] || "";
+}
+
+function initTaskStatusUi() {
+  taskStatusBadges.image = modelBadge;
+  taskStatusBadges.video = videoModelBadge;
+  taskStatusBadges.transcription = transcriptionStatusBadge;
+  taskStatusBadges.realtime = realtimeStatusBadge;
+  taskStatusBadges.tts = ttsStatusBadge;
+
+  Object.keys(taskStatusBadges).forEach((tool) => {
+    setTaskStatusBadge(tool, "info");
+  });
+
+  ["video", "transcription", "realtime", "tts"].forEach(ensureToolTaskIndicator);
+}
+
+function getToolByStatusElement(element) {
+  if (element === videoStatusText) return "video";
+  if (element === transcriptionStatusText) return "transcription";
+  if (element === realtimeStatusText) return "realtime";
+  if (element === ttsStatusText) return "tts";
+  return "";
+}
+
+function setTaskStatusBadge(tool, type = "info") {
+  const badge = taskStatusBadges[tool];
+  if (!badge) return;
+
+  const labelMap = {
+    info: "空闲",
+    loading: "处理中",
+    success: "完成",
+    warning: "待处理",
+    error: "失败",
+  };
+
+  badge.textContent = labelMap[type] || "空闲";
+  badge.dataset.status = type;
+}
+
+function ensureToolTaskIndicator(tool) {
+  if (taskIndicators[tool]) return taskIndicators[tool];
+
+  const statusElement = getToolModelConfig(tool)?.statusText;
+  const previewPanel = statusElement?.closest(".preview-panel");
+  const previewHead = previewPanel?.querySelector(".preview-head");
+  if (!previewPanel || !previewHead) return null;
+
+  const notice = document.createElement("div");
+  notice.className = "generation-notice task-notice";
+  notice.hidden = true;
+  notice.setAttribute("aria-live", "polite");
+  notice.innerHTML = `
+    <div class="generation-notice__icon-wrap">
+      <span class="generation-notice__icon" data-task-notice-icon>!</span>
+    </div>
+    <div class="generation-notice__content">
+      <div class="generation-notice__top">
+        <strong data-task-notice-title>任务处理中</strong>
+      </div>
+      <p data-task-notice-desc>任务已经提交，正在等待结果。</p>
+      <div class="generation-notice__meta">
+        <span data-task-notice-status>当前状态：处理中</span>
+        <span data-task-notice-timer>已用时 00:00</span>
+      </div>
+      <div class="generation-notice__progress">
+        <i></i>
+      </div>
+    </div>
+  `;
+
+  previewHead.insertAdjacentElement("afterend", notice);
+
+  taskIndicators[tool] = {
+    notice,
+    icon: notice.querySelector("[data-task-notice-icon]"),
+    title: notice.querySelector("[data-task-notice-title]"),
+    desc: notice.querySelector("[data-task-notice-desc]"),
+    status: notice.querySelector("[data-task-notice-status]"),
+    timer: notice.querySelector("[data-task-notice-timer]"),
+    startedAt: 0,
+    timerId: null,
+  };
+
+  return taskIndicators[tool];
+}
+
+function startToolTaskIndicator(tool, title, desc) {
+  const indicator = ensureToolTaskIndicator(tool);
+  if (!indicator) return;
+
+  if (indicator.timerId) {
+    clearInterval(indicator.timerId);
+    indicator.timerId = null;
+  }
+
+  indicator.startedAt = Date.now();
+  indicator.notice.hidden = false;
+  indicator.notice.classList.remove(
+    "success",
+    "error",
+    "is-success",
+    "is-error"
+  );
+  indicator.notice.classList.add("loading", "is-loading");
+  indicator.icon.textContent = "!";
+  indicator.title.textContent = title;
+  indicator.desc.textContent = desc;
+  indicator.status.textContent = "当前状态：处理中";
+  setTaskStatusBadge(tool, "loading");
+  updateToolTaskTimer(tool);
+  indicator.timerId = setInterval(() => updateToolTaskTimer(tool), 50);
+}
+
+function finishToolTaskIndicator(tool, type = "success", message = "") {
+  const indicator = ensureToolTaskIndicator(tool);
+  if (!indicator) return;
+
+  if (indicator.timerId) {
+    clearInterval(indicator.timerId);
+    indicator.timerId = null;
+  }
+
+  const isError = type === "error";
+  const elapsed = indicator.startedAt ? Date.now() - indicator.startedAt : 0;
+
+  indicator.notice.hidden = false;
+  indicator.notice.classList.remove(
+    "loading",
+    "success",
+    "error",
+    "is-loading",
+    "is-success",
+    "is-error"
+  );
+  indicator.notice.classList.add(isError ? "error" : "success");
+  indicator.notice.classList.add(isError ? "is-error" : "is-success");
+  indicator.icon.textContent = isError ? "!" : "✓";
+  indicator.title.textContent = isError ? "任务处理失败。" : "任务处理完成。";
+  indicator.desc.textContent = message || (isError ? "处理过程中发生错误，请查看调试信息。" : "结果已经显示在下方。");
+  indicator.status.textContent = `当前状态：${isError ? "失败" : "完成"}`;
+  indicator.timer.textContent = `总用时 ${formatElapsedTime(elapsed)}`;
+  setTaskStatusBadge(tool, isError ? "error" : "success");
+}
+
+function updateToolTaskTimer(tool) {
+  const indicator = taskIndicators[tool];
+  if (!indicator?.timer || !indicator.startedAt) return;
+
+  const elapsed = Date.now() - indicator.startedAt;
+  indicator.timer.textContent = `已用时 ${formatElapsedTime(elapsed)}`;
 }
 
 function showToolDebug(element, data) {
@@ -4367,8 +4559,10 @@ function reloadHistoryEntry(id) {
 
   if (category === "video") {
     switchTool("video");
-    ensureToolModelCard("video", item.model || "sora-2");
-    setToolModel("video", item.model || "sora-2");
+    if (item.model) {
+      ensureToolModelCard("video", item.model);
+      setToolModel("video", item.model);
+    }
     if (videoPromptInput) videoPromptInput.value = item.prompt || "";
     return;
   }
@@ -4411,6 +4605,7 @@ function handleBeforeUnload(event) {
 function startGenerationIndicator(model) {
   isGeneratingImage = true;
   generationStartTime = Date.now();
+  setTaskStatusBadge("image", "loading");
 
   if (generationTimerId) {
     clearInterval(generationTimerId);
@@ -4443,7 +4638,7 @@ function startGenerationIndicator(model) {
   }
 
   if (generationModelName) {
-    generationModelName.textContent = `生成模型：${model}`;
+    generationModelName.textContent = "当前状态：处理中";
   }
 
   updateGenerationTimer();
@@ -4475,6 +4670,7 @@ function finishGenerationIndicator(type = "success", message = "") {
   );
 
   const isError = type === "error";
+  setTaskStatusBadge("image", isError ? "error" : "success");
 
   generationNotice.classList.add(isError ? "error" : "success");
   generationNotice.classList.add(isError ? "is-error" : "is-success");
@@ -4505,6 +4701,10 @@ function finishGenerationIndicator(type = "success", message = "") {
       generationNoticeDesc.textContent =
         message || "图片已经生成完成，结果已显示在下方。";
     }
+  }
+
+  if (generationModelName) {
+    generationModelName.textContent = `当前状态：${isError ? "失败" : "完成"}`;
   }
 
   if (generationTimer) {
