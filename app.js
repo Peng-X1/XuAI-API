@@ -257,8 +257,8 @@ const IMAGE_EDIT_ENABLED = false;
 const HISTORY_STORAGE_KEY = "xuai-task-history";
 const HIDDEN_TOOL_MODEL_STORAGE_KEY = "xuai-hidden-tool-models";
 const HIDDEN_TOOL_MODELS = loadHiddenToolModels();
-const TOOL_SWITCH_OUT_MS = 170;
-const TOOL_SWITCH_IN_MS = 465;
+const TOOL_SWITCH_OUT_MS = 85;
+const TOOL_SWITCH_IN_MS = 233;
 const TOOL_META = {
   image: {
     title: "图片生成",

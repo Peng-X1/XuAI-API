@@ -2316,26 +2316,26 @@ textarea {
 }
 
 .tool-workspace.is-entering {
-  animation: toolPanelIn 0.465s cubic-bezier(0.22, 0.72, 0.18, 1) both;
+  animation: toolPanelIn 0.233s cubic-bezier(0.22, 0.72, 0.18, 1) both;
 }
 
 .tool-workspace.is-entering > .panel,
 .tool-workspace.is-entering > .history-filters,
 .tool-workspace.is-entering > .history-list {
-  animation: toolContentIn 0.465s cubic-bezier(0.22, 0.72, 0.18, 1) 0.055s both;
+  animation: toolContentIn 0.233s cubic-bezier(0.22, 0.72, 0.18, 1) 0.028s both;
 }
 
 .tool-workspace.is-leaving {
-  animation: toolPanelOut 0.17s ease both;
+  animation: toolPanelOut 0.085s ease both;
   pointer-events: none;
 }
 
 .hero.is-entering {
-  animation: heroHeaderIn 0.4s cubic-bezier(0.22, 0.72, 0.18, 1) both;
+  animation: heroHeaderIn 0.2s cubic-bezier(0.22, 0.72, 0.18, 1) both;
 }
 
 .hero.is-leaving {
-  animation: heroHeaderOut 0.17s ease both;
+  animation: heroHeaderOut 0.085s ease both;
 }
 
 @keyframes toolPanelIn {
