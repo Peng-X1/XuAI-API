@@ -133,12 +133,50 @@ body.light .topbar {
   color: var(--muted);
   padding: 12px 15px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
 }
 
 .nav-item.active,
 .nav-item:hover {
   color: var(--primary);
   background: rgba(25, 183, 255, 0.08);
+}
+
+.nav-item.active {
+  transform: translateY(-1px);
+}
+
+.nav-icon,
+.hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.nav-icon svg,
+.hero-icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-icon svg {
+  width: 1.18em;
+  height: 1.18em;
+}
+
+.hero-icon svg {
+  width: 1em;
+  height: 1em;
 }
 
 .toolbar {
@@ -177,6 +215,9 @@ body.light .topbar {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
 .hero p {
@@ -185,53 +226,11 @@ body.light .topbar {
   color: var(--muted);
 }
 
-.batch-switch {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted);
-  margin-top: 10px;
-}
-
-.batch-switch[hidden] {
-  display: none !important;
-}
-
-.batch-switch .active {
-  color: var(--primary);
-}
-
-.switch {
-  position: relative;
-  width: 58px;
-  height: 32px;
-}
-
-.switch input {
-  display: none;
-}
-
-.switch i {
-  position: absolute;
-  inset: 0;
-  background: var(--panel-3);
-  border-radius: 999px;
-}
-
-.switch i::after {
-  content: "";
-  width: 26px;
-  height: 26px;
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  border-radius: 50%;
-  background: #fff;
-  transition: 0.2s;
-}
-
-.switch input:checked + i::after {
-  left: 29px;
+.hero-icon {
+  width: 0.92em;
+  height: 0.92em;
+  color: #65e8ff;
+  filter: drop-shadow(0 0 18px rgba(25, 183, 255, 0.24));
 }
 
 .workspace {
@@ -1090,22 +1089,6 @@ body {
   font-size: 20px !important;
   line-height: 1.45 !important;
   margin: 0 !important;
-}
-
-.batch-switch {
-  font-size: 16px !important;
-  gap: 12px !important;
-}
-
-.switch {
-  width: 56px !important;
-  height: 32px !important;
-}
-
-.switch i::before,
-.switch input + i::before {
-  width: 24px !important;
-  height: 24px !important;
 }
 
 /* 工作区布局控制 */
@@ -2318,6 +2301,47 @@ textarea {
 .tool-workspace[hidden],
 .edit-upload-row[hidden] {
   display: none !important;
+}
+
+.tool-workspace.is-entering {
+  animation: toolPanelIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero.is-entering {
+  animation: heroHeaderIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes toolPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes heroHeaderIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-workspace.is-entering,
+  .hero.is-entering {
+    animation: none !important;
+  }
 }
 
 .tool-stack {

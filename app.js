@@ -196,9 +196,11 @@ const customModelInputs = $$("[data-custom-model-input]");
 const customModelAddBtns = $$("[data-custom-model-add]");
 const navItems = $$(".nav-item[data-tool]");
 const toolPanels = $$("[data-tool-panel]");
+const hero = $(".hero");
 const heroTitle = $(".hero h2");
+const heroTitleText = $(".hero [data-hero-title]");
+const heroIcon = $(".hero .hero-icon");
 const heroDesc = $(".hero p");
-const batchSwitch = $(".batch-switch");
 
 const videoForm = $("#videoForm");
 const videoModelInput = $("#videoModel");
@@ -254,6 +256,38 @@ const IMAGE_EDIT_ENABLED = false;
 const HISTORY_STORAGE_KEY = "xuai-task-history";
 const HIDDEN_TOOL_MODEL_STORAGE_KEY = "xuai-hidden-tool-models";
 const HIDDEN_TOOL_MODELS = loadHiddenToolModels();
+const TOOL_META = {
+  image: {
+    title: "图片生成",
+    desc: "使用 AI 模型生成高质量图片",
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10" r="1.5"></circle><path d="m3 16 5-5 4 4 2.5-2.5L21 18"></path></svg>',
+  },
+  video: {
+    title: "视频生成",
+    desc: "用提示词生成视频，不需要按提供商分板块",
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="13" height="10" rx="2"></rect><path d="m16 11 5-3v8l-5-3"></path></svg>',
+  },
+  transcription: {
+    title: "音频转文字",
+    desc: "上传音频或视频文件并转写为文字",
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><path d="M12 19v3"></path><path d="M8 22h8"></path></svg>',
+  },
+  realtime: {
+    title: "实时语音",
+    desc: "通过浏览器麦克风连接实时语音模型",
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 0 1 0 8"></path><path d="M8.5 5.5a8 8 0 0 1 0 13"></path><path d="M15.5 5.5a8 8 0 0 1 0 13"></path><circle cx="12" cy="12" r="1"></circle></svg>',
+  },
+  tts: {
+    title: "文字转语音",
+    desc: "把文本合成为可播放和下载的音频",
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"></path><path d="M16 9a5 5 0 0 1 0 6"></path><path d="M19 6a9 9 0 0 1 0 12"></path></svg>',
+  },
+  history: {
+    title: "历史记录",
+    desc: "查看保存在本地浏览器中的最近任务",
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path><path d="M12 7v5l3 2"></path></svg>',
+  },
+};
 
 let realtimePeerConnection = null;
 let realtimeDataChannel = null;
@@ -328,6 +362,8 @@ function init() {
   setModel(savedModel);
   syncImageModeUi();
   renderHistory();
+  decorateToolIcons();
+  syncToolHeader("image");
 
   bindEvents();
   updateApiInfo();
@@ -460,37 +496,67 @@ function bindEvents() {
 }
 
 function switchTool(tool) {
-  const titleMap = {
-    image: ["图片生成", "使用 AI 模型生成高质量图片"],
-    video: ["视频生成", "用提示词生成视频，不需要按提供商分板块"],
-    transcription: ["音频转文字", "上传音频或视频文件并转写为文字"],
-    realtime: ["实时语音", "通过浏览器麦克风连接实时语音模型"],
-    tts: ["文字转语音", "把文本合成为可播放和下载的音频"],
-    history: ["历史记录", "查看保存在本地浏览器中的最近任务"],
-  };
+  const currentPanel = toolPanels.find((panel) => !panel.hidden);
+  const toolChanged = currentPanel?.dataset.toolPanel !== tool;
 
   navItems.forEach((item) => {
     item.classList.toggle("active", item.dataset.tool === tool);
   });
 
   toolPanels.forEach((panel) => {
-    panel.hidden = panel.dataset.toolPanel !== tool;
+    const isActive = panel.dataset.toolPanel === tool;
+
+    panel.hidden = !isActive;
+    panel.classList.remove("is-entering");
+
+    if (isActive && toolChanged) {
+      void panel.offsetWidth;
+      panel.classList.add("is-entering");
+    }
   });
 
-  if (heroTitle) {
-    heroTitle.textContent = titleMap[tool]?.[0] || "XuAI API Studio";
-  }
+  syncToolHeader(tool);
 
-  if (heroDesc) {
-    heroDesc.textContent = titleMap[tool]?.[1] || "";
-  }
-
-  if (batchSwitch) {
-    batchSwitch.hidden = tool !== "image";
+  if (hero && toolChanged) {
+    hero.classList.remove("is-entering");
+    void hero.offsetWidth;
+    hero.classList.add("is-entering");
   }
 
   if (tool === "history") {
     renderHistory();
+  }
+}
+
+function decorateToolIcons() {
+  navItems.forEach((item) => {
+    const tool = item.dataset.tool;
+    const meta = TOOL_META[tool];
+    if (!meta || item.querySelector(".nav-icon")) return;
+
+    item.innerHTML = `<span class="nav-icon" aria-hidden="true">${meta.icon}</span><span>${meta.title}</span>`;
+  });
+}
+
+function syncToolHeader(tool) {
+  const meta = TOOL_META[tool] || {
+    title: "XuAI API Studio",
+    desc: "",
+    icon: "",
+  };
+
+  if (heroTitleText) {
+    heroTitleText.textContent = meta.title;
+  } else if (heroTitle) {
+    heroTitle.textContent = meta.title;
+  }
+
+  if (heroIcon) {
+    heroIcon.innerHTML = meta.icon;
+  }
+
+  if (heroDesc) {
+    heroDesc.textContent = meta.desc;
   }
 }
 
