@@ -18,13 +18,12 @@
       </div>
 
       <nav class="nav">
-        <button class="nav-item active">图片生成</button>
-        <button class="nav-item">视频生成</button>
-        <button class="nav-item">音频工具</button>
-        <button class="nav-item">实时语音</button>
-        <button class="nav-item">文本模型</button>
-        <button class="nav-item">内容安全</button>
-        <button class="nav-item">历史记录</button>
+        <button class="nav-item active" data-tool="image">图片生成</button>
+        <button class="nav-item" data-tool="video">视频生成</button>
+        <button class="nav-item" data-tool="transcription">音频转文字</button>
+        <button class="nav-item" data-tool="realtime">实时语音</button>
+        <button class="nav-item" data-tool="tts">文字转语音</button>
+        <button class="nav-item" data-tool="history">历史记录</button>
       </nav>
 
       <div class="toolbar">
@@ -49,7 +48,7 @@
         </div>
       </section>
 
-      <section class="workspace">
+      <section class="workspace tool-workspace" data-tool-panel="image">
         <aside class="panel control-panel">
           <div class="model-tabs">
             <button type="button" data-family="nano">Nano Banana</button>
@@ -107,6 +106,15 @@
                 <input type="radio" name="mode" value="edit" />
                 <span>编辑</span>
               </label>
+            </div>
+
+            <div id="imageEditFields" class="field-row edit-upload-row form-row-horizontal" hidden>
+              <label for="editImageInput">编辑图片</label>
+              <div class="tool-stack">
+                <input id="editImageInput" type="file" accept="image/*" multiple />
+                <input id="editMaskInput" type="file" accept="image/*" />
+                <p class="hint">编辑模式会把上传图片和 Prompt 一起提交；第二个文件可作为透明蒙版，不需要时留空。</p>
+              </div>
             </div>
 
             <div class="field-row model-picker-row form-row-horizontal">
@@ -538,6 +546,176 @@
           </div>
 
           <pre id="debugBox" class="debug-box"></pre>
+        </section>
+      </section>
+
+      <section class="workspace tool-workspace" data-tool-panel="video" hidden>
+        <aside class="panel control-panel">
+          <form id="videoForm" class="form">
+            <div class="field-row form-row-horizontal">
+              <label for="videoModel">视频模型</label>
+              <input id="videoModel" type="text" value="sora-2" autocomplete="off" />
+            </div>
+
+            <div class="field-row prompt-row form-row-horizontal">
+              <label for="videoPrompt">提示词 Prompt</label>
+              <textarea id="videoPrompt" rows="6" placeholder="描述视频画面、镜头运动、时长和风格"></textarea>
+            </div>
+
+            <div class="tool-grid">
+              <div class="field-row">
+                <label for="videoSize">尺寸</label>
+                <select id="videoSize">
+                  <option value="1280x720">1280x720</option>
+                  <option value="720x1280">720x1280</option>
+                  <option value="1024x1024">1024x1024</option>
+                </select>
+              </div>
+              <div class="field-row">
+                <label for="videoSeconds">时长</label>
+                <input id="videoSeconds" type="number" min="1" max="30" value="5" />
+              </div>
+            </div>
+
+            <button id="videoGenerateBtn" class="primary-btn" type="submit">生成视频</button>
+          </form>
+        </aside>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h3>视频结果</h3>
+              <p id="videoStatusText">等待生成，结果会显示在这里。</p>
+            </div>
+            <span id="videoModelBadge" class="badge">sora-2</span>
+          </div>
+          <div id="videoGallery" class="gallery empty">
+            <div class="empty-state">
+              <div class="empty-badge">Video</div>
+              <h4>视频结果会显示在这里</h4>
+              <p>填写 Prompt 后点击生成视频。</p>
+            </div>
+          </div>
+          <pre id="videoDebugBox" class="debug-box"></pre>
+        </section>
+      </section>
+
+      <section class="workspace tool-workspace" data-tool-panel="transcription" hidden>
+        <aside class="panel control-panel">
+          <form id="transcriptionForm" class="form">
+            <div class="field-row form-row-horizontal">
+              <label for="transcriptionModel">转写模型</label>
+              <input id="transcriptionModel" type="text" value="whisper-1" autocomplete="off" />
+            </div>
+            <div class="field-row form-row-horizontal">
+              <label for="audioFileInput">音频文件</label>
+              <input id="audioFileInput" type="file" accept="audio/*,video/*" />
+            </div>
+            <div class="field-row prompt-row form-row-horizontal">
+              <label for="transcriptionPrompt">提示词</label>
+              <textarea id="transcriptionPrompt" rows="4" placeholder="可选：给模型一些专有名词、语言或上下文"></textarea>
+            </div>
+            <button id="transcriptionBtn" class="primary-btn" type="submit">开始转写</button>
+          </form>
+        </aside>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h3>转写结果</h3>
+              <p id="transcriptionStatusText">上传音频后开始转写。</p>
+            </div>
+            <span class="badge">Audio</span>
+          </div>
+          <div id="transcriptionResult" class="text-result empty-text">转写文本会显示在这里。</div>
+          <pre id="transcriptionDebugBox" class="debug-box"></pre>
+        </section>
+      </section>
+
+      <section class="workspace tool-workspace" data-tool-panel="realtime" hidden>
+        <aside class="panel control-panel">
+          <form id="realtimeForm" class="form">
+            <div class="field-row form-row-horizontal">
+              <label for="realtimeModel">实时模型</label>
+              <input id="realtimeModel" type="text" value="gpt-realtime" autocomplete="off" />
+            </div>
+            <div class="field-row prompt-row form-row-horizontal">
+              <label for="realtimeInstructions">语音设定</label>
+              <textarea id="realtimeInstructions" rows="5" placeholder="例如：用中文简洁回答，语气自然"></textarea>
+            </div>
+            <div class="tool-actions">
+              <button id="realtimeStartBtn" class="primary-btn" type="button">开始实时语音</button>
+              <button id="realtimeStopBtn" class="secondary-btn" type="button" disabled>停止</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h3>实时语音</h3>
+              <p id="realtimeStatusText">点击开始后浏览器会请求麦克风权限。</p>
+            </div>
+            <span class="badge">Realtime</span>
+          </div>
+          <audio id="realtimeAudio" controls autoplay></audio>
+          <div id="realtimeLog" class="text-result empty-text">实时事件会显示在这里。</div>
+          <pre id="realtimeDebugBox" class="debug-box"></pre>
+        </section>
+      </section>
+
+      <section class="workspace tool-workspace" data-tool-panel="tts" hidden>
+        <aside class="panel control-panel">
+          <form id="ttsForm" class="form">
+            <div class="tool-grid">
+              <div class="field-row">
+                <label for="ttsModel">语音模型</label>
+                <input id="ttsModel" type="text" value="tts-1" autocomplete="off" />
+              </div>
+              <div class="field-row">
+                <label for="ttsVoice">音色</label>
+                <input id="ttsVoice" type="text" value="alloy" autocomplete="off" />
+              </div>
+            </div>
+            <div class="field-row prompt-row form-row-horizontal">
+              <label for="ttsText">文本</label>
+              <textarea id="ttsText" rows="7" placeholder="输入需要合成为语音的文本"></textarea>
+            </div>
+            <button id="ttsBtn" class="primary-btn" type="submit">生成语音</button>
+          </form>
+        </aside>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h3>语音结果</h3>
+              <p id="ttsStatusText">生成后的音频会显示在这里。</p>
+            </div>
+            <span class="badge">TTS</span>
+          </div>
+          <div id="ttsResult" class="media-result empty-text">语音播放器会显示在这里。</div>
+          <pre id="ttsDebugBox" class="debug-box"></pre>
+        </section>
+      </section>
+
+      <section class="workspace tool-workspace" data-tool-panel="history" hidden>
+        <aside class="panel control-panel">
+          <div class="history-toolbar">
+            <h3>历史记录</h3>
+            <button id="clearHistoryBtn" class="secondary-btn" type="button">清空历史</button>
+          </div>
+          <p class="hint">历史记录只保存在当前浏览器本地，不会上传到服务器。</p>
+        </aside>
+
+        <section class="panel preview-panel">
+          <div class="preview-head">
+            <div>
+              <h3>最近任务</h3>
+              <p id="historyStatusText">暂无历史记录。</p>
+            </div>
+            <span class="badge">Local</span>
+          </div>
+          <div id="historyList" class="history-list"></div>
         </section>
       </section>
     </main>

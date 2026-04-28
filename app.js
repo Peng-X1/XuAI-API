@@ -170,6 +170,10 @@ const toggleKeyBtn = $("#toggleKeyBtn");
 const refreshModelsBtn = $("#refreshModelsBtn");
 const modelSelect = $("#model");
 const promptInput = $("#prompt");
+const modeInputs = $$('input[name="mode"]');
+const imageEditFields = $("#imageEditFields");
+const editImageInput = $("#editImageInput");
+const editMaskInput = $("#editMaskInput");
 const sizeSelect = $("#size");
 const countInput = $("#count");
 const generateBtn = $("#generateBtn");
@@ -190,6 +194,59 @@ const themeBtn = $("#themeBtn");
 const modelSyncText = $("#modelSyncText");
 const customModelInputs = $$("[data-custom-model-input]");
 const customModelAddBtns = $$("[data-custom-model-add]");
+const navItems = $$(".nav-item[data-tool]");
+const toolPanels = $$("[data-tool-panel]");
+const heroTitle = $(".hero h2");
+const heroDesc = $(".hero p");
+const batchSwitch = $(".batch-switch");
+
+const videoForm = $("#videoForm");
+const videoModelInput = $("#videoModel");
+const videoPromptInput = $("#videoPrompt");
+const videoSizeSelect = $("#videoSize");
+const videoSecondsInput = $("#videoSeconds");
+const videoGenerateBtn = $("#videoGenerateBtn");
+const videoStatusText = $("#videoStatusText");
+const videoModelBadge = $("#videoModelBadge");
+const videoGallery = $("#videoGallery");
+const videoDebugBox = $("#videoDebugBox");
+
+const transcriptionForm = $("#transcriptionForm");
+const transcriptionModelInput = $("#transcriptionModel");
+const transcriptionPromptInput = $("#transcriptionPrompt");
+const audioFileInput = $("#audioFileInput");
+const transcriptionBtn = $("#transcriptionBtn");
+const transcriptionStatusText = $("#transcriptionStatusText");
+const transcriptionResult = $("#transcriptionResult");
+const transcriptionDebugBox = $("#transcriptionDebugBox");
+
+const realtimeModelInput = $("#realtimeModel");
+const realtimeInstructionsInput = $("#realtimeInstructions");
+const realtimeStartBtn = $("#realtimeStartBtn");
+const realtimeStopBtn = $("#realtimeStopBtn");
+const realtimeStatusText = $("#realtimeStatusText");
+const realtimeAudio = $("#realtimeAudio");
+const realtimeLog = $("#realtimeLog");
+const realtimeDebugBox = $("#realtimeDebugBox");
+
+const ttsForm = $("#ttsForm");
+const ttsModelInput = $("#ttsModel");
+const ttsVoiceInput = $("#ttsVoice");
+const ttsTextInput = $("#ttsText");
+const ttsBtn = $("#ttsBtn");
+const ttsStatusText = $("#ttsStatusText");
+const ttsResult = $("#ttsResult");
+const ttsDebugBox = $("#ttsDebugBox");
+
+const historyList = $("#historyList");
+const historyStatusText = $("#historyStatusText");
+const clearHistoryBtn = $("#clearHistoryBtn");
+const HISTORY_STORAGE_KEY = "xuai-task-history";
+
+let realtimePeerConnection = null;
+let realtimeDataChannel = null;
+let realtimeLocalStream = null;
+let toolApiKeyInputs = [];
 
 // 生成中提示框相关 DOM。
 // 如果 index.html 暂时没加这些节点，不会报错，只是不显示提示框。
@@ -246,6 +303,7 @@ function init() {
   normalizeModelDom();
   restoreCustomImageModels();
   lockProviderSettings();
+  initSharedApiKeyInputs();
   initApiConnectionUi();
 
   const savedModel = normalizeModelName(
@@ -253,6 +311,8 @@ function init() {
   );
 
   setModel(savedModel);
+  syncImageModeUi();
+  renderHistory();
 
   bindEvents();
   updateApiInfo();
@@ -293,7 +353,21 @@ function bindEvents() {
     });
   }
 
+  navItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      switchTool(item.dataset.tool || "image");
+    });
+  });
+
+  modeInputs.forEach((input) => {
+    input.addEventListener("change", syncImageModeUi);
+  });
+
   if (apiKey) {
+    apiKey.addEventListener("input", () => {
+      syncSharedApiKeyInputs(apiKey.value);
+    });
+
     apiKey.addEventListener("change", () => {
       if (apiKey.value.trim()) {
         refreshAvailableImageModels();
@@ -323,7 +397,146 @@ function bindEvents() {
     form.addEventListener("submit", handleGenerate);
   }
 
+  if (videoForm) {
+    videoForm.addEventListener("submit", handleVideoGenerate);
+  }
+
+  if (transcriptionForm) {
+    transcriptionForm.addEventListener("submit", handleTranscription);
+  }
+
+  if (ttsForm) {
+    ttsForm.addEventListener("submit", handleTextToSpeech);
+  }
+
+  if (realtimeStartBtn) {
+    realtimeStartBtn.addEventListener("click", startRealtimeVoice);
+  }
+
+  if (realtimeStopBtn) {
+    realtimeStopBtn.addEventListener("click", stopRealtimeVoice);
+  }
+
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener("click", clearHistory);
+  }
+
   window.addEventListener("beforeunload", handleBeforeUnload);
+}
+
+function switchTool(tool) {
+  const titleMap = {
+    image: ["图片生成", "使用 AI 模型生成和编辑高质量图片"],
+    video: ["视频生成", "用提示词生成视频，不需要按提供商分板块"],
+    transcription: ["音频转文字", "上传音频或视频文件并转写为文字"],
+    realtime: ["实时语音", "通过浏览器麦克风连接实时语音模型"],
+    tts: ["文字转语音", "把文本合成为可播放和下载的音频"],
+    history: ["历史记录", "查看保存在本地浏览器中的最近任务"],
+  };
+
+  navItems.forEach((item) => {
+    item.classList.toggle("active", item.dataset.tool === tool);
+  });
+
+  toolPanels.forEach((panel) => {
+    panel.hidden = panel.dataset.toolPanel !== tool;
+  });
+
+  if (heroTitle) {
+    heroTitle.textContent = titleMap[tool]?.[0] || "XuAI API Studio";
+  }
+
+  if (heroDesc) {
+    heroDesc.textContent = titleMap[tool]?.[1] || "";
+  }
+
+  if (batchSwitch) {
+    batchSwitch.hidden = tool !== "image";
+  }
+
+  if (tool === "history") {
+    renderHistory();
+  }
+}
+
+function getCurrentImageMode() {
+  return document.querySelector('input[name="mode"]:checked')?.value || "generate";
+}
+
+function syncImageModeUi() {
+  const isEdit = getCurrentImageMode() === "edit";
+
+  if (imageEditFields) {
+    imageEditFields.hidden = !isEdit;
+  }
+
+  if (generateBtn) {
+    generateBtn.textContent = isEdit ? "编辑图片" : "生成图片";
+  }
+
+  if (promptInput) {
+    promptInput.placeholder = isEdit
+      ? "描述你想如何修改上传的图片"
+      : "例如：一只戴着宇航头盔的橘猫，坐在未来城市屋顶，电影感灯光，超清细节";
+  }
+}
+
+function initSharedApiKeyInputs() {
+  const forms = [videoForm, transcriptionForm, ttsForm, $("#realtimeForm")].filter(Boolean);
+
+  forms.forEach((targetForm) => {
+    if (targetForm.querySelector("[data-shared-api-key]")) return;
+
+    const row = document.createElement("div");
+    row.className = "field-row api-key-row tool-api-key-row form-row-horizontal";
+    row.innerHTML = `
+      <label>API Key</label>
+      <div class="key-wrap">
+        <input type="password" autocomplete="off" placeholder="填入个人APIKey" data-shared-api-key />
+        <button type="button" data-shared-api-key-toggle>显示</button>
+      </div>
+    `;
+
+    targetForm.insertBefore(row, targetForm.firstElementChild);
+  });
+
+  toolApiKeyInputs = $$("[data-shared-api-key]");
+
+  toolApiKeyInputs.forEach((input) => {
+    input.value = apiKey?.value || "";
+    input.addEventListener("input", () => {
+      if (apiKey) {
+        apiKey.value = input.value;
+      }
+
+      syncSharedApiKeyInputs(input.value, input);
+    });
+  });
+
+  $$("[data-shared-api-key-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const input = button
+        .closest(".tool-api-key-row")
+        ?.querySelector("[data-shared-api-key]");
+      if (!input) return;
+
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+      button.textContent = isPassword ? "隐藏" : "显示";
+    });
+  });
+}
+
+function syncSharedApiKeyInputs(value, sourceInput = null) {
+  toolApiKeyInputs.forEach((input) => {
+    if (input !== sourceInput) {
+      input.value = value;
+    }
+  });
+}
+
+function getApiKeyValue() {
+  return apiKey?.value.trim() || toolApiKeyInputs.find((input) => input.value.trim())?.value.trim() || "";
 }
 
 function lockProviderSettings() {
@@ -598,7 +811,7 @@ function bindCustomModelEvents() {
 }
 
 async function refreshAvailableImageModels() {
-  const key = apiKey?.value.trim() || "";
+  const key = getApiKeyValue();
 
   if (!key) {
     setModelSyncStatus("请先填入个人 API Key。", "warning");
@@ -1490,12 +1703,14 @@ function applyFormatOptionsForModel(model) {
 async function handleGenerate(event) {
   event.preventDefault();
 
-  console.log("点击了生成图片按钮");
+  console.log("点击了图片任务按钮");
 
   lockProviderSettings();
 
   const prompt = promptInput?.value.trim() || "";
   const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
+  const imageMode = getCurrentImageMode();
+  const isEditMode = imageMode === "edit";
 
   // 这些参数已经从 UI 中移除。
   // 如果需要控制尺寸、质量、背景、风格，请直接写进 Prompt。
@@ -1512,7 +1727,7 @@ async function handleGenerate(event) {
   const count = 1;
 
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const key = apiKey?.value.trim() || "";
+  const key = getApiKeyValue();
 
   if (isGpt54Model(model)) {
     if (GPT54_DISABLED_SIZES.has(size)) {
@@ -1538,9 +1753,15 @@ async function handleGenerate(event) {
     return;
   }
 
+  if (isEditMode && !editImageInput?.files?.length) {
+    setStatus("编辑模式请先上传需要编辑的图片。", "warning");
+    editImageInput?.focus();
+    return;
+  }
+
   if (generateBtn) {
     generateBtn.disabled = true;
-    generateBtn.textContent = "生成中...";
+    generateBtn.textContent = isEditMode ? "编辑中..." : "生成中...";
   }
 
   if (debugBox) {
@@ -1551,6 +1772,7 @@ async function handleGenerate(event) {
   startGenerationIndicator(model);
 
   console.log("准备发送的生成参数：", {
+    mode: imageMode,
     model,
     size,
     quality,
@@ -1562,32 +1784,52 @@ async function handleGenerate(event) {
   try {
     setStatus("正在调用 XuAI API 中转站...", "loading");
 
-    const result = await callImageGenerationApi({
-      baseURL,
-      key,
-      model,
-      prompt,
-      size,
-      quality,
-      background,
-      format,
-      count,
-    });
+    const result = isEditMode
+      ? await callImageEditApi({
+          baseURL,
+          key,
+          model,
+          prompt,
+          imageFiles: Array.from(editImageInput.files || []),
+          maskFile: editMaskInput?.files?.[0] || null,
+          size,
+          format,
+          count,
+        })
+      : await callImageGenerationApi({
+          baseURL,
+          key,
+          model,
+          prompt,
+          size,
+          quality,
+          background,
+          format,
+          count,
+        });
 
     renderImages(result.images, {
       model,
       prompt,
+      mode: imageMode,
       isDemo: false,
     });
 
     showDebug(result.raw);
+    addHistoryEntry({
+      type: isEditMode ? "图片编辑" : "图片生成",
+      model,
+      prompt,
+      resultCount: result.images.length,
+      preview: result.images[0],
+    });
 
     finishGenerationIndicator(
       "success",
-      `模型 ${model} 已完成图片生成。`
+      `模型 ${model} 已完成${isEditMode ? "图片编辑" : "图片生成"}。`
     );
 
-    setStatus("图片生成完成。", "success");
+    setStatus(isEditMode ? "图片编辑完成。" : "图片生成完成。", "success");
   } catch (error) {
     console.error(error);
 
@@ -1596,20 +1838,20 @@ async function handleGenerate(event) {
       error.message || "生成失败，请查看控制台或下方调试信息。"
     );
 
-    setStatus("图片生成失败，请查看下方提示和调试信息。", "error");
+    setStatus(isEditMode ? "图片编辑失败，请查看下方提示和调试信息。" : "图片生成失败，请查看下方提示和调试信息。", "error");
 
     showDebug(
       error.raw || {
         error: error.message,
         model,
-        request_url: getEndpointForModel(model),
+        request_url: isEditMode ? `${baseURL}/v1/images/edits` : getEndpointForModel(model),
         tip: "如果是 504 Gateway Timeout，通常表示中转站请求上游模型超时；如果是 CORS，则需要在中转站配置跨域。",
       }
     );
   } finally {
     if (generateBtn) {
       generateBtn.disabled = false;
-      generateBtn.textContent = "生成图片";
+      generateBtn.textContent = isEditMode ? "编辑图片" : "生成图片";
     }
   }
 }
@@ -1662,6 +1904,102 @@ async function callImageGenerationApi({
     format,
     count,
   });
+}
+
+async function callImageEditApi({
+  baseURL,
+  key,
+  model,
+  prompt,
+  imageFiles,
+  maskFile,
+  size,
+  format,
+  count,
+}) {
+  const url = `${baseURL}/v1/images/edits`;
+  const formData = new FormData();
+
+  formData.append("model", model);
+  formData.append("prompt", prompt);
+  formData.append("n", String(count || 1));
+
+  if (size && size !== "auto") formData.append("size", size);
+  if (format && format !== "png") formData.append("output_format", format);
+
+  imageFiles.forEach((file) => {
+    formData.append("image", file, file.name);
+  });
+
+  if (maskFile) {
+    formData.append("mask", maskFile, maskFile.name);
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+    },
+    body: formData,
+  });
+
+  const raw = await safeJson(response);
+
+  if (!response.ok) {
+    const error = new Error(buildApiErrorMessage(raw, response, "Images Edit API"));
+    error.raw = {
+      request_url: url,
+      request_payload: {
+        model,
+        prompt,
+        n: count || 1,
+        size,
+        output_format: format,
+        image_files: imageFiles.map((file) => ({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        })),
+        mask_file: maskFile
+          ? {
+              name: maskFile.name,
+              type: maskFile.type,
+              size: maskFile.size,
+            }
+          : null,
+      },
+      response: raw,
+    };
+    throw error;
+  }
+
+  const images = extractImagesFromAnyResponse(raw);
+
+  if (!images.length) {
+    const error = new Error("图片编辑接口返回成功，但没有找到可显示的图片数据。");
+    error.raw = {
+      request_url: url,
+      response: raw,
+      tip: "请检查返回结构里是否包含 url、b64_json、image_base64 或 base64 字段。",
+    };
+    throw error;
+  }
+
+  return {
+    images,
+    raw: {
+      request_url: url,
+      request_payload: {
+        model,
+        prompt,
+        n: count || 1,
+        image_files: imageFiles.map((file) => file.name),
+        mask_file: maskFile?.name || null,
+      },
+      response: raw,
+      extracted_images_count: images.length,
+    },
+  };
 }
 
 async function callImagesGenerationsApi({
@@ -2337,15 +2675,15 @@ function extractImagesFromResponses(raw) {
 
       // 常见 base64 字段。
       if (value.b64_json) {
-        pushBase64Image(value.b64_json, localContext.output_format);
+        pushBase64Image(value.b64_json, localContext.output_format, true);
       }
 
       if (value.image_base64) {
-        pushBase64Image(value.image_base64, localContext.output_format);
+        pushBase64Image(value.image_base64, localContext.output_format, true);
       }
 
       if (value.base64) {
-        pushBase64Image(value.base64, localContext.output_format);
+        pushBase64Image(value.base64, localContext.output_format, true);
       }
 
       // Gemini / Google 常见 inline image 字段：inlineData / inline_data。
@@ -2616,8 +2954,760 @@ function redactLargeImageData(value, seen = new WeakSet()) {
   return value;
 }
 
+async function handleVideoGenerate(event) {
+  event.preventDefault();
+  lockProviderSettings();
+
+  const key = getApiKeyValue();
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
+  const model = videoModelInput?.value.trim() || "sora-2";
+  const prompt = videoPromptInput?.value.trim() || "";
+  const size = videoSizeSelect?.value || "1280x720";
+  const seconds = Number(videoSecondsInput?.value || 5);
+
+  if (!key) {
+    setToolStatus(videoStatusText, "请先填入个人 API Key。", "warning");
+    apiKey?.focus();
+    return;
+  }
+
+  if (!prompt) {
+    setToolStatus(videoStatusText, "请先输入视频 Prompt。", "warning");
+    videoPromptInput?.focus();
+    return;
+  }
+
+  if (videoGenerateBtn) {
+    videoGenerateBtn.disabled = true;
+    videoGenerateBtn.textContent = "生成中...";
+  }
+
+  if (videoModelBadge) {
+    videoModelBadge.textContent = model;
+  }
+
+  try {
+    setToolStatus(videoStatusText, "正在提交视频生成任务...", "loading");
+    const result = await callVideoGenerationApi({
+      baseURL,
+      key,
+      model,
+      prompt,
+      size,
+      seconds,
+    });
+
+    renderVideos(result.videos, { model, prompt });
+    showToolDebug(videoDebugBox, result.raw);
+    addHistoryEntry({
+      type: "视频生成",
+      model,
+      prompt,
+      resultCount: result.videos.length,
+      preview: result.videos[0],
+    });
+    setToolStatus(videoStatusText, "视频生成完成。", "success");
+  } catch (error) {
+    console.error(error);
+    setToolStatus(videoStatusText, error.message || "视频生成失败。", "error");
+    showToolDebug(videoDebugBox, error.raw || { error: error.message });
+  } finally {
+    if (videoGenerateBtn) {
+      videoGenerateBtn.disabled = false;
+      videoGenerateBtn.textContent = "生成视频";
+    }
+  }
+}
+
+async function callVideoGenerationApi({ baseURL, key, model, prompt, size, seconds }) {
+  const url = `${baseURL}/v1/videos/generations`;
+  const payload = {
+    model,
+    prompt,
+    size,
+    seconds,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let raw = await safeJson(response);
+
+  if (!response.ok) {
+    const error = new Error(buildApiErrorMessage(raw, response, "Video API"));
+    error.raw = {
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+    };
+    throw error;
+  }
+
+  const waitResult = await waitForVideoResult({
+    baseURL,
+    key,
+    initialRaw: raw,
+    requestPayload: payload,
+  });
+
+  raw = waitResult.raw;
+  const videos = extractVideosFromAnyResponse(raw);
+
+  if (!videos.length) {
+    const error = new Error("视频接口返回成功，但没有找到可播放的视频 URL 或 base64 数据。");
+    error.raw = {
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+      poll_attempts: waitResult.pollAttempts,
+    };
+    throw error;
+  }
+
+  return {
+    videos,
+    raw: {
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+      poll_attempts: waitResult.pollAttempts,
+      extracted_videos_count: videos.length,
+    },
+  };
+}
+
+async function waitForVideoResult({ baseURL, key, initialRaw, requestPayload }) {
+  let raw = initialRaw;
+  let pollAttempts = 0;
+
+  for (let attempt = 0; attempt <= RESPONSES_MAX_POLL_ATTEMPTS; attempt++) {
+    if (extractVideosFromAnyResponse(raw).length || !isPendingTask(raw)) {
+      return { raw, pollAttempts };
+    }
+
+    const taskId = raw?.id || raw?.task_id || raw?.video_id;
+    if (!taskId || attempt === RESPONSES_MAX_POLL_ATTEMPTS) {
+      return { raw, pollAttempts };
+    }
+
+    pollAttempts += 1;
+    setToolStatus(
+      videoStatusText,
+      `视频仍在生成，正在轮询结果 ${pollAttempts}/${RESPONSES_MAX_POLL_ATTEMPTS}...`,
+      "loading"
+    );
+
+    await delay(RESPONSES_POLL_INTERVAL_MS);
+
+    const retrieveUrl = `${baseURL}/v1/videos/${encodeURIComponent(taskId)}`;
+    const response = await fetch(retrieveUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${key}`,
+      },
+    });
+    const nextRaw = await safeJson(response);
+
+    if (!response.ok) {
+      const error = new Error(buildApiErrorMessage(nextRaw, response, "Video API 轮询"));
+      error.raw = {
+        request_url: `${baseURL}/v1/videos/generations`,
+        request_payload: requestPayload,
+        retrieve_url: retrieveUrl,
+        initial_response: initialRaw,
+        retrieve_response: nextRaw,
+      };
+      throw error;
+    }
+
+    raw = nextRaw;
+  }
+
+  return { raw, pollAttempts };
+}
+
+async function handleTranscription(event) {
+  event.preventDefault();
+  lockProviderSettings();
+
+  const key = getApiKeyValue();
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
+  const model = transcriptionModelInput?.value.trim() || "whisper-1";
+  const file = audioFileInput?.files?.[0] || null;
+  const prompt = transcriptionPromptInput?.value.trim() || "";
+
+  if (!key) {
+    setToolStatus(transcriptionStatusText, "请先填入个人 API Key。", "warning");
+    apiKey?.focus();
+    return;
+  }
+
+  if (!file) {
+    setToolStatus(transcriptionStatusText, "请先上传音频或视频文件。", "warning");
+    audioFileInput?.focus();
+    return;
+  }
+
+  if (transcriptionBtn) {
+    transcriptionBtn.disabled = true;
+    transcriptionBtn.textContent = "转写中...";
+  }
+
+  try {
+    setToolStatus(transcriptionStatusText, "正在上传并转写音频...", "loading");
+    const result = await callTranscriptionApi({
+      baseURL,
+      key,
+      model,
+      file,
+      prompt,
+    });
+
+    renderTextResult(transcriptionResult, result.text || "接口没有返回文本。");
+    showToolDebug(transcriptionDebugBox, result.raw);
+    addHistoryEntry({
+      type: "音频转文字",
+      model,
+      prompt: file.name,
+      text: result.text,
+    });
+    setToolStatus(transcriptionStatusText, "音频转写完成。", "success");
+  } catch (error) {
+    console.error(error);
+    setToolStatus(transcriptionStatusText, error.message || "音频转写失败。", "error");
+    showToolDebug(transcriptionDebugBox, error.raw || { error: error.message });
+  } finally {
+    if (transcriptionBtn) {
+      transcriptionBtn.disabled = false;
+      transcriptionBtn.textContent = "开始转写";
+    }
+  }
+}
+
+async function callTranscriptionApi({ baseURL, key, model, file, prompt }) {
+  const url = `${baseURL}/v1/audio/transcriptions`;
+  const formData = new FormData();
+
+  formData.append("model", model);
+  formData.append("file", file, file.name);
+  formData.append("response_format", "json");
+  if (prompt) formData.append("prompt", prompt);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+    },
+    body: formData,
+  });
+
+  const raw = await safeJson(response);
+
+  if (!response.ok) {
+    const error = new Error(buildApiErrorMessage(raw, response, "Audio Transcription API"));
+    error.raw = {
+      request_url: url,
+      request_payload: {
+        model,
+        file: {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        },
+        prompt,
+      },
+      response: raw,
+    };
+    throw error;
+  }
+
+  return {
+    text: extractTextFromAnyResponse(raw) || raw?.text || raw?.raw || "",
+    raw: {
+      request_url: url,
+      request_payload: {
+        model,
+        file: file.name,
+        prompt,
+      },
+      response: raw,
+    },
+  };
+}
+
+async function handleTextToSpeech(event) {
+  event.preventDefault();
+  lockProviderSettings();
+
+  const key = getApiKeyValue();
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
+  const model = ttsModelInput?.value.trim() || "tts-1";
+  const voice = ttsVoiceInput?.value.trim() || "alloy";
+  const input = ttsTextInput?.value.trim() || "";
+
+  if (!key) {
+    setToolStatus(ttsStatusText, "请先填入个人 API Key。", "warning");
+    apiKey?.focus();
+    return;
+  }
+
+  if (!input) {
+    setToolStatus(ttsStatusText, "请先输入需要合成的文本。", "warning");
+    ttsTextInput?.focus();
+    return;
+  }
+
+  if (ttsBtn) {
+    ttsBtn.disabled = true;
+    ttsBtn.textContent = "生成中...";
+  }
+
+  try {
+    setToolStatus(ttsStatusText, "正在生成语音...", "loading");
+    const result = await callTextToSpeechApi({
+      baseURL,
+      key,
+      model,
+      voice,
+      input,
+    });
+
+    renderAudioResult(ttsResult, result.audioUrl, result.filename);
+    showToolDebug(ttsDebugBox, result.raw);
+    addHistoryEntry({
+      type: "文字转语音",
+      model,
+      prompt: input,
+      preview: result.audioUrl,
+    });
+    setToolStatus(ttsStatusText, "语音生成完成。", "success");
+  } catch (error) {
+    console.error(error);
+    setToolStatus(ttsStatusText, error.message || "语音生成失败。", "error");
+    showToolDebug(ttsDebugBox, error.raw || { error: error.message });
+  } finally {
+    if (ttsBtn) {
+      ttsBtn.disabled = false;
+      ttsBtn.textContent = "生成语音";
+    }
+  }
+}
+
+async function callTextToSpeechApi({ baseURL, key, model, voice, input }) {
+  const url = `${baseURL}/v1/audio/speech`;
+  const payload = {
+    model,
+    voice,
+    input,
+    response_format: "mp3",
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!response.ok) {
+    const raw = contentType.includes("application/json")
+      ? await safeJson(response)
+      : { raw: await response.text() };
+    const error = new Error(buildApiErrorMessage(raw, response, "Audio Speech API"));
+    error.raw = {
+      request_url: url,
+      request_payload: payload,
+      response: raw,
+    };
+    throw error;
+  }
+
+  const blob = await response.blob();
+  const audioUrl = URL.createObjectURL(blob);
+
+  return {
+    audioUrl,
+    filename: `xuai-tts-${Date.now()}.mp3`,
+    raw: {
+      request_url: url,
+      request_payload: payload,
+      response: {
+        content_type: contentType,
+        size: blob.size,
+      },
+    },
+  };
+}
+
+async function startRealtimeVoice() {
+  lockProviderSettings();
+
+  const key = getApiKeyValue();
+  const baseURL = normalizeBaseUrl(FIXED_API_BASE);
+  const model = realtimeModelInput?.value.trim() || "gpt-realtime";
+  const instructions = realtimeInstructionsInput?.value.trim() || "";
+
+  if (!key) {
+    setToolStatus(realtimeStatusText, "请先填入个人 API Key。", "warning");
+    apiKey?.focus();
+    return;
+  }
+
+  stopRealtimeVoice();
+
+  try {
+    setToolStatus(realtimeStatusText, "正在请求麦克风权限...", "loading");
+    realtimeLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    realtimePeerConnection = new RTCPeerConnection();
+
+    realtimePeerConnection.ontrack = (event) => {
+      if (realtimeAudio) {
+        realtimeAudio.srcObject = event.streams[0];
+      }
+    };
+
+    realtimeLocalStream.getTracks().forEach((track) => {
+      realtimePeerConnection.addTrack(track, realtimeLocalStream);
+    });
+
+    realtimeDataChannel = realtimePeerConnection.createDataChannel("oai-events");
+    realtimeDataChannel.onmessage = (event) => appendRealtimeLog(event.data);
+    realtimeDataChannel.onopen = () => {
+      appendRealtimeLog("数据通道已连接。");
+      if (instructions) {
+        realtimeDataChannel.send(
+          JSON.stringify({
+            type: "session.update",
+            session: {
+              instructions,
+            },
+          })
+        );
+      }
+    };
+
+    const offer = await realtimePeerConnection.createOffer();
+    await realtimePeerConnection.setLocalDescription(offer);
+
+    setToolStatus(realtimeStatusText, "正在连接实时语音模型...", "loading");
+    const url = `${baseURL}/v1/realtime?model=${encodeURIComponent(model)}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/sdp",
+        "OpenAI-Beta": "realtime=v1",
+      },
+      body: offer.sdp,
+    });
+
+    const answerSdp = await response.text();
+
+    if (!response.ok) {
+      const raw = parseMaybeJson(answerSdp);
+      const error = new Error(
+        buildApiErrorMessage(raw, response, "Realtime API")
+      );
+      error.raw = {
+        request_url: url,
+        response: raw,
+      };
+      throw error;
+    }
+
+    await realtimePeerConnection.setRemoteDescription({
+      type: "answer",
+      sdp: answerSdp,
+    });
+
+    if (realtimeStartBtn) realtimeStartBtn.disabled = true;
+    if (realtimeStopBtn) realtimeStopBtn.disabled = false;
+
+    setToolStatus(realtimeStatusText, "实时语音已连接。", "success");
+    showToolDebug(realtimeDebugBox, {
+      request_url: url,
+      model,
+      instructions,
+      note: "浏览器通过 WebRTC 连接实时语音模型。",
+    });
+  } catch (error) {
+    console.error(error);
+    stopRealtimeVoice();
+    setToolStatus(realtimeStatusText, error.message || "实时语音连接失败。", "error");
+    showToolDebug(realtimeDebugBox, error.raw || { error: error.message });
+  }
+}
+
+function stopRealtimeVoice() {
+  if (realtimeDataChannel) {
+    realtimeDataChannel.close();
+    realtimeDataChannel = null;
+  }
+
+  if (realtimePeerConnection) {
+    realtimePeerConnection.close();
+    realtimePeerConnection = null;
+  }
+
+  if (realtimeLocalStream) {
+    realtimeLocalStream.getTracks().forEach((track) => track.stop());
+    realtimeLocalStream = null;
+  }
+
+  if (realtimeAudio) {
+    realtimeAudio.srcObject = null;
+  }
+
+  if (realtimeStartBtn) realtimeStartBtn.disabled = false;
+  if (realtimeStopBtn) realtimeStopBtn.disabled = true;
+
+  if (realtimeStatusText) {
+    setToolStatus(realtimeStatusText, "实时语音已停止。", "info");
+  }
+}
+
+function renderVideos(videos, meta) {
+  if (!videoGallery) return;
+
+  videoGallery.classList.remove("empty");
+  videoGallery.innerHTML = `
+    <div class="result-grid">
+      ${videos
+        .map((src, index) => {
+          const filename = `xuai-${meta.model}-${index + 1}.mp4`;
+          return `
+            <article class="result-card result-card--video">
+              <video src="${src}" controls playsinline></video>
+              <footer>
+                <small>Video #${index + 1}</small>
+                <a href="${src}" download="${filename}" target="_blank" rel="noreferrer">下载</a>
+              </footer>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderTextResult(container, text) {
+  if (!container) return;
+  container.classList.remove("empty-text");
+  container.textContent = text;
+}
+
+function renderAudioResult(container, audioUrl, filename) {
+  if (!container) return;
+  container.classList.remove("empty-text");
+  container.innerHTML = `
+    <audio controls src="${audioUrl}"></audio>
+    <a class="download-link" href="${audioUrl}" download="${filename}">下载音频</a>
+  `;
+}
+
+function appendRealtimeLog(message) {
+  if (!realtimeLog) return;
+
+  realtimeLog.classList.remove("empty-text");
+  const text =
+    typeof message === "string" ? message : JSON.stringify(message, null, 2);
+  realtimeLog.textContent = `${realtimeLog.textContent || ""}\n${text}`.trim();
+}
+
+function extractVideosFromAnyResponse(raw) {
+  const videos = [];
+  const visited = new WeakSet();
+
+  const pushVideo = (value, mimeType = "video/mp4") => {
+    if (!value) return;
+    const text = String(value).trim();
+
+    if (text.startsWith("http://") || text.startsWith("https://")) {
+      if (/\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(text) || text.includes("video")) {
+        videos.push(text);
+      }
+      return;
+    }
+
+    if (text.startsWith("data:video/")) {
+      videos.push(text);
+      return;
+    }
+
+    if (text.length > 100 && /^[A-Za-z0-9+/=_-]+$/.test(text)) {
+      videos.push(`data:${mimeType};base64,${text}`);
+    }
+  };
+
+  const walk = (value) => {
+    if (!value) return;
+
+    if (Array.isArray(value)) {
+      value.forEach(walk);
+      return;
+    }
+
+    if (typeof value === "string") {
+      pushVideo(value);
+      return;
+    }
+
+    if (typeof value === "object") {
+      if (visited.has(value)) return;
+      visited.add(value);
+
+      const mimeType = value.mime_type || value.mimeType || "video/mp4";
+
+      if (value.url) pushVideo(value.url, mimeType);
+      if (value.video_url) pushVideo(value.video_url, mimeType);
+      if (value.output_url) pushVideo(value.output_url, mimeType);
+      if (value.b64_json) pushVideo(value.b64_json, mimeType);
+      if (value.video_base64) pushVideo(value.video_base64, mimeType);
+      if (value.base64 && String(mimeType).startsWith("video/")) {
+        pushVideo(value.base64, mimeType);
+      }
+
+      Object.values(value).forEach(walk);
+    }
+  };
+
+  walk(raw);
+  return uniqueArray(videos);
+}
+
+function isPendingTask(raw) {
+  const status = String(raw?.status || raw?.state || "").toLowerCase();
+  return ["queued", "pending", "in_progress", "processing", "generating"].includes(
+    status
+  );
+}
+
+function setToolStatus(element, message, type = "info") {
+  if (!element) return;
+
+  element.textContent = message;
+  const colorMap = {
+    info: "",
+    loading: "var(--primary)",
+    success: "var(--success)",
+    warning: "var(--warning)",
+    error: "var(--danger)",
+  };
+  element.style.color = colorMap[type] || "";
+}
+
+function showToolDebug(element, data) {
+  if (!element) return;
+
+  const redacted = redactLargeImageData(data);
+  element.textContent =
+    typeof redacted === "string" ? redacted : JSON.stringify(redacted, null, 2);
+  element.classList.add("show");
+}
+
+function parseMaybeJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+}
+
+function getHistoryEntries() {
+  try {
+    const value = JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistoryEntries(entries) {
+  localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(entries.slice(0, 80)));
+}
+
+function addHistoryEntry(entry) {
+  const entries = getHistoryEntries();
+  const safePreview =
+    typeof entry.preview === "string" && /^https?:\/\//.test(entry.preview)
+      ? entry.preview
+      : "";
+
+  entries.unshift({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    createdAt: new Date().toISOString(),
+    ...entry,
+    preview: safePreview,
+  });
+  saveHistoryEntries(entries);
+  renderHistory();
+}
+
+function renderHistory() {
+  if (!historyList) return;
+
+  const entries = getHistoryEntries();
+
+  if (historyStatusText) {
+    historyStatusText.textContent = entries.length
+      ? `共 ${entries.length} 条本地历史。`
+      : "暂无历史记录。";
+  }
+
+  if (!entries.length) {
+    historyList.innerHTML = `<div class="empty-text">暂无历史记录。</div>`;
+    return;
+  }
+
+  historyList.innerHTML = entries
+    .map((item) => {
+      const time = new Date(item.createdAt).toLocaleString();
+      const preview = item.preview
+        ? `<a href="${item.preview}" target="_blank" rel="noreferrer">打开结果</a>`
+        : "";
+      const text = item.text ? `<p>${escapeHtml(item.text).slice(0, 500)}</p>` : "";
+
+      return `
+        <article class="history-item">
+          <div>
+            <strong>${escapeHtml(item.type || "任务")}</strong>
+            <span>${escapeHtml(item.model || "-")} · ${time}</span>
+          </div>
+          <p>${escapeHtml(item.prompt || "")}</p>
+          ${text}
+          ${preview}
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_STORAGE_KEY);
+  renderHistory();
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function handleBeforeUnload(event) {
-  if (!isGeneratingImage) return;
+  if (!isGeneratingImage && !realtimePeerConnection) return;
 
   event.preventDefault();
   event.returnValue = "";

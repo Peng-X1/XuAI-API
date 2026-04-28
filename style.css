@@ -2310,3 +2310,131 @@ textarea {
   color: #fff;
   outline: none;
 }
+
+.tool-workspace[hidden],
+.edit-upload-row[hidden] {
+  display: none !important;
+}
+
+.tool-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tool-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.secondary-btn {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 13px 18px;
+  font-weight: 700;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.result-card video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #050914;
+}
+
+.text-result,
+.media-result,
+.history-list {
+  min-height: 260px;
+  border: 1px dashed rgba(154, 164, 182, 0.38);
+  border-radius: 18px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(25, 183, 255, 0.06), transparent);
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.empty-text {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.media-result {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.media-result audio,
+#realtimeAudio {
+  width: 100%;
+}
+
+.download-link,
+.history-item a {
+  color: var(--primary-2);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.history-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.history-toolbar h3 {
+  margin: 0;
+}
+
+.history-list {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.history-item {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--panel-2);
+}
+
+.history-item div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.history-item span,
+.history-item p {
+  color: var(--muted);
+}
+
+.history-item p {
+  margin: 10px 0 0;
+}
+
+@media (max-width: 680px) {
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+}
