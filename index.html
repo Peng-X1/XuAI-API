@@ -149,6 +149,62 @@
                   <span>使用 gpt-5.4 模型生成图片，基于 Responses API。</span>
                 </button>
               </div>
+
+              <!-- 自定义 Nano Banana / Gemini 兼容绘图模型：默认走 /v1/chat/completions -->
+              <div class="custom-model-panel" data-family="nano" hidden>
+                <label for="customNanoModel">自定义 Nano Banana 绘图模型</label>
+                <div class="custom-model-row">
+                  <input
+                    id="customNanoModel"
+                    type="text"
+                    placeholder="例如 gemini-xxx-image-preview"
+                    autocomplete="off"
+                    data-custom-model-input
+                    data-family="nano"
+                    data-api-type="chat"
+                  />
+                  <button
+                    type="button"
+                    class="secondary-btn"
+                    data-custom-model-add
+                    data-family="nano"
+                    data-api-type="chat"
+                  >
+                    添加并使用
+                  </button>
+                </div>
+                <p class="hint">
+                  会按 Chat Completions 图片请求发送，适合 Nano Banana / Gemini 兼容模型。
+                </p>
+              </div>
+
+              <!-- 自定义 GPT 绘图模型：默认走 /v1/images/generations -->
+              <div class="custom-model-panel" data-family="gpt">
+                <label for="customGptModel">自定义 GPT 绘图模型</label>
+                <div class="custom-model-row">
+                  <input
+                    id="customGptModel"
+                    type="text"
+                    placeholder="例如 gpt-image-custom"
+                    autocomplete="off"
+                    data-custom-model-input
+                    data-family="gpt"
+                    data-api-type="images"
+                  />
+                  <button
+                    type="button"
+                    class="secondary-btn"
+                    data-custom-model-add
+                    data-family="gpt"
+                    data-api-type="images"
+                  >
+                    添加并使用
+                  </button>
+                </div>
+                <p class="hint">
+                  会按 Images API 图片生成请求发送，适合 OpenAI / GPT-Image 兼容模型。
+                </p>
+              </div>
             </div>
 
             <div class="current-model">
