@@ -54,8 +54,7 @@
           <div class="model-tabs">
             <button type="button" data-family="nano">Nano Banana</button>
             <button type="button" class="active" data-family="gpt">GPT-Image</button>
-            <button type="button" data-family="grok">Grok</button>
-            <button type="button" data-family="flux">Flux</button>
+            <button type="button" data-family="grok">Grok-Imagine</button>
             <button type="button" data-family="doubao">豆包</button>
             <button type="button" data-family="qianwen">千问</button>
           </div>
@@ -178,62 +177,6 @@
                 >
                   <strong>grok-imagine-image-pro</strong>
                   <span>Grok Imagine Pro 图片生成模型，默认走 Images API。</span>
-                </button>
-
-                <!-- Flux 模型 -->
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="flux"
-                  data-model="flux-1.1-pro"
-                  hidden
-                >
-                  <strong>flux-1.1-pro</strong>
-                  <span>Flux 1.1 Pro 图片生成模型，默认走 Images API。</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="flux"
-                  data-model="flux-2-pro"
-                  hidden
-                >
-                  <strong>flux-2-pro</strong>
-                  <span>Flux 2 Pro 图片生成模型，默认走 Images API。</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="flux"
-                  data-model="flux-kontext-pro"
-                  hidden
-                >
-                  <strong>flux-kontext-pro</strong>
-                  <span>Flux Kontext Pro 图片生成 / 编辑模型。</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="flux"
-                  data-model="flux-kontext-max"
-                  hidden
-                >
-                  <strong>flux-kontext-max</strong>
-                  <span>Flux Kontext Max 图片生成 / 编辑模型。</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="flux"
-                  data-model="flux-2-flex"
-                  hidden
-                >
-                  <strong>flux-2-flex</strong>
-                  <span>Flux 2 Flex 图片生成模型，默认走 Images API。</span>
                 </button>
 
                 <!-- 豆包模型 -->
@@ -378,34 +321,6 @@
                 </p>
               </div>
 
-              <!-- 自定义 Flux 绘图模型：默认走 /v1/images/generations -->
-              <div class="custom-model-panel" data-family="flux" hidden>
-                <label for="customFluxModel">自定义 Flux 绘图模型</label>
-                <div class="custom-model-row">
-                  <input
-                    id="customFluxModel"
-                    type="text"
-                    placeholder="例如 flux-image-custom"
-                    autocomplete="off"
-                    data-custom-model-input
-                    data-family="flux"
-                    data-api-type="images"
-                  />
-                  <button
-                    type="button"
-                    class="secondary-btn"
-                    data-custom-model-add
-                    data-family="flux"
-                    data-api-type="images"
-                  >
-                    添加并使用
-                  </button>
-                </div>
-                <p class="hint">
-                  会按 Images API 图片生成请求发送，适合 Flux 兼容绘图模型。
-                </p>
-              </div>
-
               <!-- 自定义豆包绘图模型：默认走 /v1/images/generations -->
               <div class="custom-model-panel" data-family="doubao" hidden>
                 <label for="customDoubaoModel">自定义豆包绘图模型</label>
@@ -526,27 +441,6 @@
 
                 <option value="grok-imagine-image-pro" data-family="grok">
                   grok-imagine-image-pro
-                </option>
-
-                <!-- Flux -->
-                <option value="flux-1.1-pro" data-family="flux">
-                  flux-1.1-pro
-                </option>
-
-                <option value="flux-2-pro" data-family="flux">
-                  flux-2-pro
-                </option>
-
-                <option value="flux-kontext-pro" data-family="flux">
-                  flux-kontext-pro
-                </option>
-
-                <option value="flux-kontext-max" data-family="flux">
-                  flux-kontext-max
-                </option>
-
-                <option value="flux-2-flex" data-family="flux">
-                  flux-2-flex
                 </option>
 
                 <!-- 豆包 -->

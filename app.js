@@ -7,7 +7,7 @@ const DEFAULT_NANO_MODEL = "gemini-3-pro-image-preview";
 const GPT54_MODEL = "gpt-5.4";
 
 // 自定义绘图模型保存在浏览器本地，不会提交到服务器或 GitHub。
-// GPT/Grok/Flux/豆包/千问默认按 Images API 调用；Nano Banana 默认按 Chat Completions 图片调用。
+// GPT/Grok-Imagine/豆包/千问默认按 Images API 调用；Nano Banana 默认按 Chat Completions 图片调用。
 const CUSTOM_MODEL_STORAGE_KEY = "xuai-custom-image-models";
 const CUSTOM_MODEL_FAMILY_CONFIG = {
   nano: {
@@ -21,14 +21,9 @@ const CUSTOM_MODEL_FAMILY_CONFIG = {
     description: "自定义 GPT 绘图模型，默认走 /v1/images/generations。",
   },
   grok: {
-    label: "Grok",
+    label: "Grok-Imagine",
     apiType: "images",
-    description: "自定义 Grok 绘图模型，默认走 /v1/images/generations。",
-  },
-  flux: {
-    label: "Flux",
-    apiType: "images",
-    description: "自定义 Flux 绘图模型，默认走 /v1/images/generations。",
+    description: "自定义 Grok-Imagine 绘图模型，默认走 /v1/images/generations。",
   },
   doubao: {
     label: "豆包",
@@ -60,7 +55,6 @@ const MODEL_FAMILY_DEFAULTS = {
   nano: DEFAULT_NANO_MODEL,
   gpt: DEFAULT_IMAGE_MODEL,
   grok: "grok-imagine-image",
-  flux: "flux-1.1-pro",
   doubao: "doubao-seedream-4-0-250828",
   qianwen: "qwen-image-edit-plus",
 };
@@ -130,36 +124,6 @@ const MODEL_META = {
     family: "doubao",
     title: "doubao-seedream-3-0-t2i-250415",
     description: "豆包 Seedream 3.0 文生图模型，默认走 Images API。",
-  },
-
-  "flux-1.1-pro": {
-    family: "flux",
-    title: "flux-1.1-pro",
-    description: "Flux 1.1 Pro 图片生成模型，默认走 Images API。",
-  },
-
-  "flux-2-pro": {
-    family: "flux",
-    title: "flux-2-pro",
-    description: "Flux 2 Pro 图片生成模型，默认走 Images API。",
-  },
-
-  "flux-kontext-pro": {
-    family: "flux",
-    title: "flux-kontext-pro",
-    description: "Flux Kontext Pro 图片生成 / 编辑模型，默认走 Images API。",
-  },
-
-  "flux-kontext-max": {
-    family: "flux",
-    title: "flux-kontext-max",
-    description: "Flux Kontext Max 图片生成 / 编辑模型，默认走 Images API。",
-  },
-
-  "flux-2-flex": {
-    family: "flux",
-    title: "flux-2-flex",
-    description: "Flux 2 Flex 图片生成模型，默认走 Images API。",
   },
 
   "qwen-image-edit-plus": {
@@ -458,10 +422,6 @@ function inferFamilyFromTabText(text) {
 
   if (value.includes("nano") || value.includes("banana") || value.includes("gemini")) {
     return "nano";
-  }
-
-  if (value.includes("flux")) {
-    return "flux";
   }
 
   if (value.includes("grok")) {
@@ -820,10 +780,6 @@ function inferImageFamilyFromModelName(model) {
     return "grok";
   }
 
-  if (value.includes("flux")) {
-    return "flux";
-  }
-
   if (
     value.includes("doubao") ||
     value.includes("seedream") ||
@@ -855,7 +811,6 @@ function isLikelyImageModelName(model) {
     value.includes("imagine") ||
     value.includes("dall-e") ||
     value.includes("dalle") ||
-    value.includes("flux") ||
     value.includes("seedream") ||
     value.includes("seededit")
   );
