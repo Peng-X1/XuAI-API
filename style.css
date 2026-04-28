@@ -2316,37 +2316,35 @@ textarea {
 }
 
 .tool-workspace.is-entering {
-  animation: toolPanelIn 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: toolPanelIn 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .tool-workspace.is-entering > .panel,
 .tool-workspace.is-entering > .history-filters,
 .tool-workspace.is-entering > .history-list {
-  animation: toolContentIn 0.52s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
+  animation: toolContentIn 0.78s cubic-bezier(0.2, 0.8, 0.2, 1) 0.08s both;
 }
 
 .hero.is-entering {
-  animation: heroHeaderIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: heroHeaderIn 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 @keyframes toolPanelIn {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.992);
-    filter: blur(8px);
+    transform: translateY(6px);
   }
 
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 
 @keyframes toolContentIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
 
   to {
@@ -2358,7 +2356,7 @@ textarea {
 @keyframes heroHeaderIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
 
   to {
