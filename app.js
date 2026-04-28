@@ -116,6 +116,9 @@ const apiModeBadge = $("#apiModeBadge");
 const apiInfoTitle = $("#apiInfoTitle");
 const apiInfoDesc = $("#apiInfoDesc");
 const gallery = $("#gallery");
+const emptyStateBadge = $(".empty-state .empty-badge");
+const emptyStateTitle = $(".empty-state h4");
+const emptyStateDesc = $(".empty-state p");
 const debugBox = $("#debugBox");
 const themeBtn = $("#themeBtn");
 const customModelInputs = $$("[data-custom-model-input]");
@@ -700,11 +703,31 @@ function setModel(model) {
     modelBadge.textContent = model;
   }
 
+  updateEmptyPreviewState(model);
   applyModelUiRestrictions(model);
 
   localStorage.setItem("xuai-model", model);
 
   updateApiInfo();
+}
+
+function updateEmptyPreviewState(model) {
+  if (!gallery?.classList.contains("empty")) return;
+
+  // 空状态是初始 HTML，不会随 modelBadge 自动变化，所以切换模型时手动同步。
+  if (emptyStateBadge) {
+    emptyStateBadge.textContent = model;
+  }
+
+  if (emptyStateTitle) {
+    emptyStateTitle.textContent = `${model} 结果会显示在这里`;
+  }
+
+  if (emptyStateDesc) {
+    emptyStateDesc.textContent = "填写 Prompt 后点击生成按钮。";
+  }
+
+  setStatus("等待生成，结果会显示在这里。", "info");
 }
 
 function getEndpointForModel(model) {
