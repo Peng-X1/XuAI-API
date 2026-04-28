@@ -35,7 +35,7 @@
       <section class="hero">
         <div>
           <h2>图片生成</h2>
-          <p>使用 AI 模型生成和编辑高质量图片</p>
+          <p>使用 AI 模型生成高质量图片</p>
         </div>
 
         <div class="batch-switch">
@@ -102,8 +102,8 @@
                 <input type="radio" name="mode" value="generate" checked />
                 <span>生成</span>
               </label>
-              <label class="radio">
-                <input type="radio" name="mode" value="edit" />
+              <label class="radio" hidden>
+                <input type="radio" name="mode" value="edit" disabled />
                 <span>编辑</span>
               </label>
             </div>
@@ -749,10 +749,6 @@
 
       <section class="tool-workspace history-workspace" data-tool-panel="history" hidden>
         <div class="history-topline">
-          <div>
-            <h3>历史记录</h3>
-            <p id="historyStatusText">暂无历史记录。</p>
-          </div>
           <button id="clearHistoryBtn" class="history-danger-btn" type="button">清空全部</button>
         </div>
 

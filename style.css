@@ -2495,7 +2495,7 @@ textarea {
 
 .history-topline {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 20px;
   align-items: flex-start;
 }
@@ -2645,5 +2645,24 @@ textarea {
 
   .tool-model-cards {
     grid-template-columns: 1fr;
+  }
+}
+
+/* 最终覆盖：所有页面顶部标题统一收小，避免前面旧样式再次放大。 */
+.hero h2 {
+  font-size: clamp(22px, 3vw, 34px) !important;
+  line-height: 1.08 !important;
+  letter-spacing: 0 !important;
+}
+
+.hero p {
+  margin-top: 10px !important;
+  font-size: 15px !important;
+  line-height: 1.45 !important;
+}
+
+@media (max-width: 720px) {
+  .hero h2 {
+    font-size: 24px !important;
   }
 }

@@ -250,6 +250,7 @@ const historyList = $("#historyList");
 const historyStatusText = $("#historyStatusText");
 const clearHistoryBtn = $("#clearHistoryBtn");
 const historyFilters = $("#historyFilters");
+const IMAGE_EDIT_ENABLED = false;
 const HISTORY_STORAGE_KEY = "xuai-task-history";
 const HIDDEN_TOOL_MODEL_STORAGE_KEY = "xuai-hidden-tool-models";
 const HIDDEN_TOOL_MODELS = loadHiddenToolModels();
@@ -460,7 +461,7 @@ function bindEvents() {
 
 function switchTool(tool) {
   const titleMap = {
-    image: ["图片生成", "使用 AI 模型生成和编辑高质量图片"],
+    image: ["图片生成", "使用 AI 模型生成高质量图片"],
     video: ["视频生成", "用提示词生成视频，不需要按提供商分板块"],
     transcription: ["音频转文字", "上传音频或视频文件并转写为文字"],
     realtime: ["实时语音", "通过浏览器麦克风连接实时语音模型"],
@@ -494,11 +495,20 @@ function switchTool(tool) {
 }
 
 function getCurrentImageMode() {
+  if (!IMAGE_EDIT_ENABLED) return "generate";
+
   return document.querySelector('input[name="mode"]:checked')?.value || "generate";
 }
 
 function syncImageModeUi() {
   const isEdit = getCurrentImageMode() === "edit";
+
+  if (!IMAGE_EDIT_ENABLED) {
+    const generateInput = document.querySelector('input[name="mode"][value="generate"]');
+    const editInput = document.querySelector('input[name="mode"][value="edit"]');
+    if (generateInput) generateInput.checked = true;
+    if (editInput) editInput.disabled = true;
+  }
 
   if (imageEditFields) {
     imageEditFields.hidden = !isEdit;
