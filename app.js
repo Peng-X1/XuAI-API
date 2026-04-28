@@ -7,16 +7,38 @@ const DEFAULT_NANO_MODEL = "gemini-3-pro-image-preview";
 const GPT54_MODEL = "gpt-5.4";
 
 // 自定义绘图模型保存在浏览器本地，不会提交到服务器或 GitHub。
-// GPT 分组默认按 Images API 调用；Nano Banana 分组默认按 Chat Completions 图片调用。
+// GPT/Grok/Flux/豆包/千问默认按 Images API 调用；Nano Banana 默认按 Chat Completions 图片调用。
 const CUSTOM_MODEL_STORAGE_KEY = "xuai-custom-image-models";
 const CUSTOM_MODEL_FAMILY_CONFIG = {
+  nano: {
+    label: "Nano Banana",
+    apiType: "chat",
+    description: "自定义 Nano Banana / Gemini 兼容绘图模型，默认走 /v1/chat/completions。",
+  },
   gpt: {
+    label: "GPT-Image",
     apiType: "images",
     description: "自定义 GPT 绘图模型，默认走 /v1/images/generations。",
   },
-  nano: {
-    apiType: "chat",
-    description: "自定义 Nano Banana / Gemini 兼容绘图模型，默认走 /v1/chat/completions。",
+  grok: {
+    label: "Grok",
+    apiType: "images",
+    description: "自定义 Grok 绘图模型，默认走 /v1/images/generations。",
+  },
+  flux: {
+    label: "Flux",
+    apiType: "images",
+    description: "自定义 Flux 绘图模型，默认走 /v1/images/generations。",
+  },
+  doubao: {
+    label: "豆包",
+    apiType: "images",
+    description: "自定义豆包绘图模型，默认走 /v1/images/generations。",
+  },
+  qianwen: {
+    label: "千问",
+    apiType: "images",
+    description: "自定义千问绘图模型，默认走 /v1/images/generations。",
   },
 };
 
@@ -37,7 +59,10 @@ const CHAT_COMPLETIONS_IMAGE_MODELS = new Set([
 const MODEL_FAMILY_DEFAULTS = {
   nano: DEFAULT_NANO_MODEL,
   gpt: DEFAULT_IMAGE_MODEL,
+  grok: "",
   flux: "",
+  doubao: "",
+  qianwen: "",
 };
 
 const MODEL_META = {
@@ -351,6 +376,18 @@ function inferFamilyFromTabText(text) {
     return "flux";
   }
 
+  if (value.includes("grok")) {
+    return "grok";
+  }
+
+  if (value.includes("豆包") || value.includes("doubao")) {
+    return "doubao";
+  }
+
+  if (value.includes("千问") || value.includes("qianwen") || value.includes("qwen")) {
+    return "qianwen";
+  }
+
   return "gpt";
 }
 
@@ -394,11 +431,6 @@ function getModelFamily(model) {
 function setModelFamily(family) {
   if (!family) return;
 
-  if (family === "flux") {
-    setStatus("Flux 分组暂未接入模型。", "warning");
-    return;
-  }
-
   const currentModel = normalizeModelName(
     modelSelect?.value || DEFAULT_IMAGE_MODEL
   );
@@ -411,7 +443,11 @@ function setModelFamily(family) {
   const nextModel = MODEL_FAMILY_DEFAULTS[family];
 
   if (!nextModel) {
-    setStatus("当前分组暂未配置默认模型。", "warning");
+    applyModelFamilyUi(family, currentModel);
+    setStatus(
+      `${getModelFamilyLabel(family)} 分组暂无内置模型，请在下方添加自定义绘图模型。`,
+      "warning"
+    );
     return;
   }
 
@@ -689,16 +725,22 @@ function getApiTypeForModel(model) {
   return "images";
 }
 
+function getModelFamilyLabel(family) {
+  return CUSTOM_MODEL_FAMILY_CONFIG[family]?.label || "GPT-Image";
+}
+
 function getCustomModelDescription(family, apiType) {
   if (family === "nano") {
     return "自定义 Nano Banana / Gemini 兼容绘图模型，使用 Chat Completions 图片请求。";
   }
 
+  const label = getModelFamilyLabel(family);
+
   if (apiType === "responses") {
-    return "自定义 GPT 绘图模型，使用 Responses API 图片工具请求。";
+    return `自定义 ${label} 绘图模型，使用 Responses API 图片工具请求。`;
   }
 
-  return "自定义 GPT 绘图模型，使用 Images API 图片生成请求。";
+  return `自定义 ${label} 绘图模型，使用 Images API 图片生成请求。`;
 }
 
 function getCustomCardDescription(family, apiType) {
@@ -706,11 +748,13 @@ function getCustomCardDescription(family, apiType) {
     return "自定义 Nano Banana 模型，会按 text + image 的 Chat Completions 请求发送。";
   }
 
+  const label = getModelFamilyLabel(family);
+
   if (apiType === "responses") {
-    return "自定义 GPT 模型，会按 Responses API 图片工具请求发送。";
+    return `自定义 ${label} 模型，会按 Responses API 图片工具请求发送。`;
   }
 
-  return "自定义 GPT 模型，会按 Images API 图片生成请求发送。";
+  return `自定义 ${label} 模型，会按 Images API 图片生成请求发送。`;
 }
 
 function setModel(model) {

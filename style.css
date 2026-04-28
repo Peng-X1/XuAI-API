@@ -2043,6 +2043,17 @@ textarea {
   }
 }
 
+/* 绘图模型分组：前三个固定在第一行，其他分组排在后面 */
+.model-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 720px) {
+  .model-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
 /* 隐藏当前模型分组之外的模型卡片 */
 .model-card[hidden] {
   display: none !important;
