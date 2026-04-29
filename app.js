@@ -960,6 +960,7 @@ async function refreshToolModels(tool) {
       )
     );
 
+    pruneToolModelCards(tool, detectedModels);
     registerToolModels(tool, detectedModels);
 
     if (!detectedModels.length) {
@@ -1006,6 +1007,26 @@ function registerToolModels(tool, models) {
     setToolModel(tool, currentModel);
   } else if (models[0]) {
     setToolModel(tool, models[0]);
+  }
+}
+
+function pruneToolModelCards(tool, detectedModels) {
+  const config = getToolModelConfig(tool);
+  const detectedSet = new Set(detectedModels.map((model) => normalizeModelName(model)));
+
+  if (!config?.cards) return;
+
+  config.cards.querySelectorAll(".tool-model-card").forEach((card) => {
+    const model = normalizeModelName(card.dataset.toolModel);
+
+    if (!detectedSet.has(model) || inferToolModelType(model) !== tool) {
+      card.remove();
+    }
+  });
+
+  const currentModel = normalizeModelName(config.input?.value || "");
+  if (currentModel && (!detectedSet.has(currentModel) || inferToolModelType(currentModel) !== tool)) {
+    setToolModel(tool, findFirstToolModel(tool) || config.defaultModel);
   }
 }
 
@@ -1079,18 +1100,36 @@ function inferToolModelType(model) {
 }
 
 function isLikelyVideoModelName(value) {
+  const name = String(value || "").toLowerCase();
+
+  if (
+    name.includes("t2i") ||
+    name.includes("text-to-image") ||
+    name.includes("image-generation") ||
+    name.includes("image_generation")
+  ) {
+    return false;
+  }
+
+  const hasVideoMarker =
+    name.includes("t2v") ||
+    name.includes("i2v") ||
+    name.includes("text-to-video") ||
+    name.includes("image-to-video") ||
+    name.includes("video");
+
   return (
-    value.includes("sora") ||
-    value.includes("video") ||
-    value.includes("veo") ||
-    value.includes("kling") ||
-    value.includes("wan") ||
-    value.includes("hailuo") ||
-    value.includes("seedance") ||
-    value.includes("runway") ||
-    value.includes("luma") ||
-    value.includes("minimax") ||
-    value.includes("pika")
+    hasVideoMarker ||
+    name.includes("sora") ||
+    name.includes("veo") ||
+    name.includes("kling") ||
+    name.includes("hailuo") ||
+    name.includes("seedance") ||
+    name.includes("runway") ||
+    name.includes("luma") ||
+    name.includes("pika") ||
+    /^wan(?:x)?[-_.]?\d.*(?:t2v|i2v)/.test(name) ||
+    /(?:^|[-_.])minimax[-_.]?.*(?:video|t2v|i2v|hailuo)/.test(name)
   );
 }
 
@@ -1609,7 +1648,12 @@ function inferImageFamilyFromModelName(model) {
     return "doubao";
   }
 
-  if (value.includes("qwen-image") || value.includes("qianwen")) {
+  if (
+    value.includes("qwen-image") ||
+    value.includes("qianwen") ||
+    value.includes("wanx") ||
+    /^wan(?:x)?[-_.]?\d.*t2i/.test(value)
+  ) {
     return "qianwen";
   }
 
@@ -1622,11 +1666,24 @@ function inferImageFamilyFromModelName(model) {
     return "gpt";
   }
 
+  if (value.includes("t2i") || value.includes("text-to-image")) {
+    return "gpt";
+  }
+
   return "";
 }
 
 function isLikelyImageModelName(model) {
   const value = String(model || "").toLowerCase();
+
+  if (
+    value.includes("t2v") ||
+    value.includes("i2v") ||
+    value.includes("text-to-video") ||
+    value.includes("image-to-video")
+  ) {
+    return false;
+  }
 
   return (
     isGpt5ImageCandidate(value) ||
@@ -1635,7 +1692,10 @@ function isLikelyImageModelName(model) {
     value.includes("dall-e") ||
     value.includes("dalle") ||
     value.includes("seedream") ||
-    value.includes("seededit")
+    value.includes("seededit") ||
+    value.includes("t2i") ||
+    value.includes("text-to-image") ||
+    /^wan(?:x)?[-_.]?\d.*t2i/.test(value)
   );
 }
 
