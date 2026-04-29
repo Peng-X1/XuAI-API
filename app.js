@@ -1188,7 +1188,7 @@ function normalizeModelDom() {
 
       const model = normalizeModelName(option.value);
 
-      if (HIDDEN_IMAGE_MODELS.has(model)) {
+      if (HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) {
         option.remove();
         return;
       }
@@ -1208,7 +1208,7 @@ function normalizeModelDom() {
 
     const model = normalizeModelName(card.dataset.model);
 
-    if (HIDDEN_IMAGE_MODELS.has(model)) {
+    if (HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) {
       card.remove();
       return;
     }
@@ -1513,7 +1513,9 @@ function registerAvailableImageModels(modelNames) {
   const models = [];
 
   modelNames.forEach((model) => {
-    if (HIDDEN_IMAGE_MODELS.has(normalizeModelName(model))) return;
+    model = normalizeModelName(model);
+
+    if (HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) return;
 
     const family = inferImageFamilyFromModelName(model);
 
@@ -1588,6 +1590,7 @@ function configureModelApiType(model, apiType) {
 function inferImageFamilyFromModelName(model) {
   const value = String(model || "").toLowerCase();
 
+  if (isImageEditOnlyModel(value)) return "";
   if (!isLikelyImageModelName(value)) return "";
 
   if (value.includes("gemini") || value.includes("nano") || value.includes("banana")) {
@@ -1633,6 +1636,20 @@ function isLikelyImageModelName(model) {
     value.includes("dalle") ||
     value.includes("seedream") ||
     value.includes("seededit")
+  );
+}
+
+function isImageEditOnlyModel(model) {
+  const value = normalizeModelName(model).toLowerCase();
+
+  if (!value || IMAGE_EDIT_ENABLED) return false;
+
+  return (
+    value.includes("seededit") ||
+    value.includes("-edit") ||
+    value.includes("image-edit") ||
+    value.includes("images-edit") ||
+    value.includes("edit-plus")
   );
 }
 
@@ -1752,7 +1769,7 @@ function registerCustomImageModel({ model, family, apiType, persist = false }) {
 function ensureCustomModelCard(model, family, apiType) {
   const cards = document.querySelector(".cards");
   if (!cards) return;
-  if (HIDDEN_IMAGE_MODELS.has(model)) return;
+  if (HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) return;
 
   const meta = MODEL_META[model] || {};
   const isDiscovered = meta.discovered === true;
@@ -2087,7 +2104,7 @@ function getCustomCardDescription(family, apiType) {
 function setModel(model) {
   model = normalizeModelName(model);
 
-  if (!model || HIDDEN_IMAGE_MODELS.has(model) || !MODEL_META[model]) {
+  if (!model || HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model) || !MODEL_META[model]) {
     const family = model ? getModelFamily(model) : "gpt";
     model = findFirstModelInFamily(family) || findFirstVisibleModel() || DEFAULT_IMAGE_MODEL;
   }
