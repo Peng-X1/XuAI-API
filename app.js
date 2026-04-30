@@ -964,6 +964,7 @@ async function refreshToolModels(tool) {
     registerToolModels(tool, detectedModels);
 
     if (!detectedModels.length) {
+      setToolModelSyncTextHidden(tool, false);
       finishToolTaskIndicator(
         tool,
         "warning",
@@ -973,6 +974,7 @@ async function refreshToolModels(tool) {
       return;
     }
 
+    setToolModelSyncTextHidden(tool, true);
     finishToolTaskIndicator(
       tool,
       "success",
@@ -1061,6 +1063,13 @@ function ensureToolModelCard(tool, model) {
   card.append(title, tag);
   config.cards.appendChild(card);
   bindToolModelCards(config.cards);
+}
+
+function setToolModelSyncTextHidden(tool, hidden) {
+  const config = getToolModelConfig(tool);
+  if (!config?.syncText) return;
+
+  config.syncText.hidden = Boolean(hidden);
 }
 
 function setToolModelSyncStatus(tool, message, type = "info") {
