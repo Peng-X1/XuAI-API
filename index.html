@@ -123,7 +123,8 @@
               <label for="editImageInput">编辑图片</label>
               <div class="tool-stack">
                 <input id="editImageInput" type="file" accept="image/*" multiple />
-                <input id="editMaskInput" type="file" accept="image/*" />
+                <input id="editMaskInput" type="file" accept="image/*" multiple data-edit-extra-input />
+                <div id="editImagePreview" class="edit-image-preview" aria-live="polite"></div>
                 <p class="hint">编辑模式会把上传图片和 Prompt 一起提交；第二个文件可作为透明蒙版，不需要时留空。</p>
               </div>
             </div>

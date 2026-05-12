@@ -174,6 +174,7 @@ const modeInputs = $$('input[name="mode"]');
 const imageEditFields = $("#imageEditFields");
 const editImageInput = $("#editImageInput");
 const editMaskInput = $("#editMaskInput");
+const editImagePreview = $("#editImagePreview");
 const modelPickerLabel = $("[data-model-picker-label]");
 const sizeSelect = $("#size");
 const countInput = $("#count");
@@ -421,6 +422,8 @@ function bindEvents() {
     input.addEventListener("change", syncImageModeUi);
   });
 
+  bindEditImageInputs();
+
   if (apiKey) {
     apiKey.addEventListener("input", () => {
       syncSharedApiKeyInputs(apiKey.value);
@@ -667,6 +670,73 @@ function syncImageModeUi() {
       ? "描述你想如何修改上传的图片"
       : "例如：一只戴着宇航头盔的橘猫，坐在未来城市屋顶，电影感灯光，超清细节";
   }
+}
+
+function bindEditImageInputs() {
+  if (!editImageInput && !editMaskInput) return;
+
+  editImageInput?.addEventListener("change", syncEditImagePreview);
+
+  editMaskInput?.addEventListener("change", () => {
+    mergeEditImageFiles(editMaskInput.files);
+    editMaskInput.value = "";
+  });
+
+  syncEditImagePreview();
+}
+
+function mergeEditImageFiles(extraFiles) {
+  if (!editImageInput || !extraFiles?.length) return;
+
+  const transfer = new DataTransfer();
+  const existingFiles = new Set();
+
+  getEditImageFiles().forEach((file) => {
+    existingFiles.add(getFileIdentity(file));
+    transfer.items.add(file);
+  });
+
+  Array.from(extraFiles).forEach((file) => {
+    const identity = getFileIdentity(file);
+    if (existingFiles.has(identity)) return;
+    existingFiles.add(identity);
+    transfer.items.add(file);
+  });
+
+  editImageInput.files = transfer.files;
+  syncEditImagePreview();
+}
+
+function getFileIdentity(file) {
+  return [file.name, file.size, file.lastModified].join(":");
+}
+
+function getEditImageFiles() {
+  return Array.from(editImageInput?.files || []);
+}
+
+function syncEditImagePreview() {
+  if (!editImagePreview) return;
+
+  const files = getEditImageFiles();
+  editImagePreview.innerHTML = "";
+  editImagePreview.hidden = !files.length;
+
+  files.forEach((file) => {
+    const item = document.createElement("div");
+    item.className = "edit-image-preview__item";
+
+    const image = document.createElement("img");
+    image.alt = file.name;
+    image.src = URL.createObjectURL(file);
+    image.addEventListener("load", () => URL.revokeObjectURL(image.src), { once: true });
+
+    const label = document.createElement("span");
+    label.textContent = file.name;
+
+    item.append(image, label);
+    editImagePreview.appendChild(item);
+  });
 }
 
 function initSharedApiKeyInputs() {
@@ -2409,7 +2479,9 @@ async function handleGenerate(event) {
     return;
   }
 
-  if (isEditMode && !editImageInput?.files?.length) {
+  const editImageFiles = getEditImageFiles();
+
+  if (isEditMode && !editImageFiles.length) {
     setStatus("编辑模式请先上传需要编辑的图片。", "warning");
     editImageInput?.focus();
     return;
@@ -2451,8 +2523,7 @@ async function handleGenerate(event) {
           key,
           model,
           prompt,
-          imageFiles: Array.from(editImageInput.files || []),
-          maskFile: editMaskInput?.files?.[0] || null,
+          imageFiles: editImageFiles,
           size,
           format,
           count,
@@ -2575,7 +2646,6 @@ async function callImageEditApi({
   model,
   prompt,
   imageFiles,
-  maskFile,
   size,
   format,
   count,
@@ -2593,10 +2663,6 @@ async function callImageEditApi({
   imageFiles.forEach((file) => {
     formData.append("image", file, file.name);
   });
-
-  if (maskFile) {
-    formData.append("mask", maskFile, maskFile.name);
-  }
 
   const response = await fetch(url, {
     method: "POST",
@@ -2623,13 +2689,6 @@ async function callImageEditApi({
           type: file.type,
           size: file.size,
         })),
-        mask_file: maskFile
-          ? {
-              name: maskFile.name,
-              type: maskFile.type,
-              size: maskFile.size,
-            }
-          : null,
       },
       response: raw,
     };
@@ -2657,7 +2716,6 @@ async function callImageEditApi({
         prompt,
         n: count || 1,
         image_files: imageFiles.map((file) => file.name),
-        mask_file: maskFile?.name || null,
       },
       response: raw,
       extracted_images_count: images.length,
