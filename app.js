@@ -625,8 +625,12 @@ function getCurrentImageMode() {
   return document.querySelector('input[name="mode"]:checked')?.value || "generate";
 }
 
+function isImageEditModeActive() {
+  return getCurrentImageMode() === "edit";
+}
+
 function syncImageModeUi() {
-  const isEdit = getCurrentImageMode() === "edit";
+  const isEdit = isImageEditModeActive();
 
   if (!IMAGE_EDIT_ENABLED) {
     const generateInput = document.querySelector('input[name="mode"][value="generate"]');
@@ -646,6 +650,17 @@ function syncImageModeUi() {
   if (modelPickerLabel) {
     modelPickerLabel.textContent = isEdit ? "编辑模型" : "生成模型";
   }
+
+  const currentModel = getSelectedImageModel();
+  if (isEdit && currentModel && !canUseImageEditApi(currentModel)) {
+    const nextModel = findFirstModelInFamily(getModelFamily(currentModel)) || findFirstVisibleModel();
+    if (nextModel) {
+      setModel(nextModel);
+      return;
+    }
+  }
+
+  applyModelFamilyUi(getModelFamily(currentModel || DEFAULT_IMAGE_MODEL), currentModel || DEFAULT_IMAGE_MODEL);
 
   if (promptInput) {
     promptInput.placeholder = isEdit
@@ -1375,7 +1390,8 @@ function applyModelFamilyUi(family, activeModel) {
     Array.from(modelSelect.options).forEach((option) => {
       const optionModel = normalizeModelName(option.value);
       const optionFamily = option.dataset.family || getModelFamily(optionModel);
-      const shouldShow = optionFamily === family;
+      const shouldShow =
+        optionFamily === family && shouldShowModelForCurrentMode(optionModel);
 
       option.hidden = !shouldShow;
       option.disabled = !shouldShow;
@@ -1385,7 +1401,8 @@ function applyModelFamilyUi(family, activeModel) {
   $$(".model-card").forEach((card) => {
     const cardModel = normalizeModelName(card.dataset.model);
     const cardFamily = card.dataset.family || getModelFamily(cardModel);
-    const shouldShow = cardFamily === family;
+    const shouldShow =
+      cardFamily === family && shouldShowModelForCurrentMode(cardModel);
 
     card.hidden = !shouldShow;
     card.classList.toggle("active", shouldShow && cardModel === activeModel);
@@ -1923,7 +1940,10 @@ function findFirstModelInFamily(family) {
   const card = $$(".model-card").find((item) => {
     const model = normalizeModelName(item.dataset.model);
     const meta = getModelMeta(model);
-    return (item.dataset.family || meta.family) === family && !HIDDEN_IMAGE_MODELS.has(model);
+    return (
+      (item.dataset.family || meta.family) === family &&
+      shouldShowModelForCurrentMode(model)
+    );
   });
 
   if (card) return normalizeModelName(card.dataset.model);
@@ -1931,7 +1951,10 @@ function findFirstModelInFamily(family) {
   const option = Array.from(modelSelect?.options || []).find((item) => {
     const model = normalizeModelName(item.value);
     const meta = getModelMeta(model);
-    return (item.dataset.family || meta.family) === family && !HIDDEN_IMAGE_MODELS.has(model);
+    return (
+      (item.dataset.family || meta.family) === family &&
+      shouldShowModelForCurrentMode(model)
+    );
   });
 
   return normalizeModelName(option?.value || "");
@@ -1940,14 +1963,14 @@ function findFirstModelInFamily(family) {
 function findFirstVisibleModel() {
   const card = $$(".model-card").find((item) => {
     const model = normalizeModelName(item.dataset.model);
-    return model && !HIDDEN_IMAGE_MODELS.has(model);
+    return shouldShowModelForCurrentMode(model);
   });
 
   if (card) return normalizeModelName(card.dataset.model);
 
   const option = Array.from(modelSelect?.options || []).find((item) => {
     const model = normalizeModelName(item.value);
-    return model && !HIDDEN_IMAGE_MODELS.has(model);
+    return shouldShowModelForCurrentMode(model);
   });
 
   return normalizeModelName(option?.value || "");
@@ -2073,7 +2096,28 @@ function getApiTypeForModel(model) {
 }
 
 function canUseImageEditApi(model) {
-  return getApiTypeForModel(model) === "images";
+  model = normalizeModelName(model).toLowerCase();
+
+  if (getApiTypeForModel(model) !== "images") return false;
+
+  return (
+    model.includes("gpt-image") ||
+    model.includes("dall-e-2") ||
+    model.includes("seededit") ||
+    model.includes("image-edit") ||
+    model.includes("edit-plus") ||
+    model.includes("qwen-image-edit")
+  );
+}
+
+function shouldShowModelForCurrentMode(model) {
+  model = normalizeModelName(model);
+
+  if (!model || HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) {
+    return false;
+  }
+
+  return !isImageEditModeActive() || canUseImageEditApi(model);
 }
 
 function getModelFamilyLabel(family) {
@@ -2109,7 +2153,7 @@ function getCustomCardDescription(family, apiType) {
 function setModel(model) {
   model = normalizeModelName(model);
 
-  if (!model || HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model) || !MODEL_META[model]) {
+  if (!model || !shouldShowModelForCurrentMode(model) || !MODEL_META[model]) {
     const family = model ? getModelFamily(model) : "gpt";
     model = findFirstModelInFamily(family) || findFirstVisibleModel() || DEFAULT_IMAGE_MODEL;
   }
@@ -2131,6 +2175,31 @@ function setModel(model) {
   localStorage.setItem("xuai-model", model);
 
   updateApiInfo();
+}
+
+function getSelectedImageModel() {
+  const selectModel = normalizeModelName(modelSelect?.value || "");
+
+  if (selectModel && shouldShowModelForCurrentMode(selectModel)) {
+    return selectModel;
+  }
+
+  const activeCardModel = normalizeModelName(
+    document.querySelector(".model-card.active:not([hidden])")?.dataset.model || ""
+  );
+
+  if (activeCardModel && shouldShowModelForCurrentMode(activeCardModel)) {
+    if (modelSelect) modelSelect.value = activeCardModel;
+    return activeCardModel;
+  }
+
+  const fallback = findFirstModelInFamily(getModelFamily(selectModel)) || findFirstVisibleModel();
+  if (fallback) {
+    setModel(fallback);
+    return fallback;
+  }
+
+  return "";
 }
 
 function updateEmptyPreviewState(model) {
@@ -2166,7 +2235,7 @@ function getEndpointForModel(model) {
 }
 
 function updateApiInfo() {
-  const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
+  const model = getSelectedImageModel();
 
   if (apiModeBadge) {
     apiModeBadge.textContent = "真实 API";
