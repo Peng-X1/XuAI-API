@@ -174,6 +174,7 @@ const modeInputs = $$('input[name="mode"]');
 const imageEditFields = $("#imageEditFields");
 const editImageInput = $("#editImageInput");
 const editMaskInput = $("#editMaskInput");
+const modelPickerLabel = $("[data-model-picker-label]");
 const sizeSelect = $("#size");
 const countInput = $("#count");
 const generateBtn = $("#generateBtn");
@@ -252,7 +253,7 @@ const historyList = $("#historyList");
 const historyStatusText = $("#historyStatusText");
 const clearHistoryBtn = $("#clearHistoryBtn");
 const historyFilters = $("#historyFilters");
-const IMAGE_EDIT_ENABLED = false;
+const IMAGE_EDIT_ENABLED = true;
 const HISTORY_STORAGE_KEY = "xuai-task-history";
 const HIDDEN_TOOL_MODEL_STORAGE_KEY = "xuai-hidden-tool-models";
 const HIDDEN_TOOL_MODELS = loadHiddenToolModels();
@@ -640,6 +641,10 @@ function syncImageModeUi() {
 
   if (generateBtn) {
     generateBtn.textContent = isEdit ? "编辑图片" : "生成图片";
+  }
+
+  if (modelPickerLabel) {
+    modelPickerLabel.textContent = isEdit ? "编辑模型" : "生成模型";
   }
 
   if (promptInput) {
@@ -2067,6 +2072,10 @@ function getApiTypeForModel(model) {
   return "images";
 }
 
+function canUseImageEditApi(model) {
+  return getApiTypeForModel(model) === "images";
+}
+
 function getModelFamilyLabel(family) {
   return CUSTOM_MODEL_FAMILY_CONFIG[family]?.label || "GPT-Image";
 }
@@ -2334,6 +2343,11 @@ async function handleGenerate(event) {
   if (isEditMode && !editImageInput?.files?.length) {
     setStatus("编辑模式请先上传需要编辑的图片。", "warning");
     editImageInput?.focus();
+    return;
+  }
+
+  if (isEditMode && !canUseImageEditApi(model)) {
+    setStatus("编辑模式请选择 Images API 类型的绘图或编辑模型。", "warning");
     return;
   }
 
