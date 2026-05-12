@@ -178,8 +178,6 @@ const sizeSelect = $("#size");
 const countInput = $("#count");
 const generateBtn = $("#generateBtn");
 
-const currentModelText = $("#currentModelText");
-const currentModelDesc = $("#currentModelDesc");
 const modelBadge = $("#modelBadge");
 const statusText = $("#statusText");
 const apiModeBadge = $("#apiModeBadge");
@@ -192,8 +190,6 @@ const emptyStateDesc = $(".empty-state p");
 const debugBox = $("#debugBox");
 const themeBtn = $("#themeBtn");
 const modelSyncText = $("#modelSyncText");
-const customModelInputs = $$("[data-custom-model-input]");
-const customModelAddBtns = $$("[data-custom-model-add]");
 const navItems = $$(".nav-item[data-tool]");
 const toolPanels = $$("[data-tool-panel]");
 const hero = $(".hero");
@@ -359,7 +355,6 @@ function init() {
   }
 
   normalizeModelDom();
-  restoreCustomImageModels();
   lockProviderSettings();
   initSharedApiKeyInputs();
   normalizeToolModelCards();
@@ -445,8 +440,6 @@ function bindEvents() {
   });
 
   $$(".model-card").forEach(bindModelCard);
-
-  bindCustomModelEvents();
 
   if (modelSelect) {
     modelSelect.addEventListener("change", () => {
@@ -1393,10 +1386,6 @@ function applyModelFamilyUi(family, activeModel) {
     card.classList.toggle("active", shouldShow && cardModel === activeModel);
   });
 
-  $$(".custom-model-panel").forEach((panel) => {
-    const panelFamily = panel.dataset.family || "gpt";
-    panel.hidden = panelFamily !== family;
-  });
 }
 
 function ensureModelOption(model) {
@@ -1422,23 +1411,6 @@ function ensureModelOption(model) {
   option.dataset.family = meta.family || "gpt";
 
   modelSelect.appendChild(option);
-}
-
-function bindCustomModelEvents() {
-  customModelAddBtns.forEach((button) => {
-    button.addEventListener("click", () => {
-      addCustomModelFromControl(button);
-    });
-  });
-
-  customModelInputs.forEach((input) => {
-    input.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
-
-      event.preventDefault();
-      addCustomModelFromControl(input);
-    });
-  });
 }
 
 async function refreshAvailableImageModels() {
@@ -1763,40 +1735,6 @@ function setModelSyncStatus(message, type = "info") {
   modelSyncText.style.color = colorMap[type] || "";
 }
 
-function addCustomModelFromControl(control) {
-  const family = normalizeCustomModelFamily(control?.dataset.family);
-  const config = CUSTOM_MODEL_FAMILY_CONFIG[family];
-  const input = document.querySelector(
-    `[data-custom-model-input][data-family="${family}"]`
-  );
-  const model = normalizeModelName(input?.value || "");
-
-  if (!model) {
-    setStatus("请输入自定义模型名称。", "warning");
-    input?.focus();
-    return;
-  }
-
-  const record = registerCustomImageModel({
-    model,
-    family,
-    apiType: control?.dataset.apiType || input?.dataset.apiType || config.apiType,
-    persist: true,
-  });
-
-  if (input) {
-    input.value = "";
-  }
-
-  setModel(record.model);
-  setStatus(
-    record.custom
-      ? `已添加并切换到自定义模型 ${record.model}。`
-      : `已切换到已有模型 ${record.model}。`,
-    "success"
-  );
-}
-
 function registerCustomImageModel({ model, family, apiType, persist = false }) {
   model = normalizeModelName(model);
   family = normalizeCustomModelFamily(family);
@@ -2010,29 +1948,6 @@ function findFirstVisibleModel() {
   return normalizeModelName(option?.value || "");
 }
 
-function restoreCustomImageModels() {
-  let savedModels = [];
-
-  try {
-    savedModels = JSON.parse(localStorage.getItem(CUSTOM_MODEL_STORAGE_KEY) || "[]");
-  } catch {
-    savedModels = [];
-  }
-
-  if (!Array.isArray(savedModels)) return;
-
-  savedModels.forEach((item) => {
-    if (!item?.model) return;
-
-    registerCustomImageModel({
-      model: item.model,
-      family: item.family,
-      apiType: item.apiType,
-      persist: false,
-    });
-  });
-}
-
 function saveCustomImageModels() {
   const records = Array.from(CUSTOM_IMAGE_MODEL_RECORDS.values()).map((item) => ({
     model: item.model,
@@ -2199,14 +2114,6 @@ function setModel(model) {
 
   if (modelSelect) {
     modelSelect.value = model;
-  }
-
-  if (currentModelText) {
-    currentModelText.textContent = meta.title || model;
-  }
-
-  if (currentModelDesc) {
-    currentModelDesc.textContent = meta.description || "";
   }
 
   updateEmptyPreviewState(model);
