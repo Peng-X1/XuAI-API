@@ -2061,11 +2061,14 @@ function getModelSortRank(model, family) {
   model = normalizeModelName(model);
 
   if (family === "gpt") {
-    const gpt5Rank = GPT5_IMAGE_MODEL_ORDER.indexOf(model);
-    if (gpt5Rank >= 0) return gpt5Rank;
+    const preferredGptImageRank = ["gpt-image-2-flatfee", "gpt-image-2"].indexOf(model);
+    if (preferredGptImageRank >= 0) return preferredGptImageRank;
 
-    const gptImageRank = ["gpt-image-2", "gpt-image-1", "dall-e-3"].indexOf(model);
-    if (gptImageRank >= 0) return 100 + gptImageRank;
+    const gpt5Rank = GPT5_IMAGE_MODEL_ORDER.indexOf(model);
+    if (gpt5Rank >= 0) return 100 + gpt5Rank;
+
+    const gptImageRank = ["gpt-image-1", "dall-e-3"].indexOf(model);
+    if (gptImageRank >= 0) return 200 + gptImageRank;
   }
 
   return 1000;
