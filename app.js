@@ -85,61 +85,61 @@ const MODEL_META = {
   "gpt-image-2": {
     family: "gpt",
     title: "gpt-image-2",
-    description: "Images API",
+    description: "可生成/编辑",
   },
 
   "gpt-image-1": {
     family: "gpt",
     title: "gpt-image-1",
-    description: "Images API",
+    description: "可生成/编辑",
   },
 
   "dall-e-3": {
     family: "gpt",
     title: "dall-e-3",
-    description: "Images API",
+    description: "可生成/编辑",
   },
 
   "grok-imagine-image": {
     family: "grok",
     title: "grok-imagine-image",
-    description: "Images API",
+    description: "可生成/编辑",
   },
 
   "grok-imagine-image-pro": {
     family: "grok",
     title: "grok-imagine-image-pro",
-    description: "Images API",
+    description: "可生成/编辑",
   },
 
   "doubao-seedream-4-0-250828": {
     family: "doubao",
     title: "doubao-seedream-4-0-250828",
-    description: "文生图 / Images API",
+    description: "可生成/编辑",
   },
 
   "doubao-seededit-3-0-i2i-250628": {
     family: "doubao",
     title: "doubao-seededit-3-0-i2i-250628",
-    description: "图生图 / 编辑",
+    description: "可生成/编辑",
   },
 
   "doubao-seedream-3-0-t2i-250415": {
     family: "doubao",
     title: "doubao-seedream-3-0-t2i-250415",
-    description: "文生图 / Images API",
+    description: "可生成/编辑",
   },
 
   "qwen-image-edit-plus": {
     family: "qianwen",
     title: "qwen-image-edit-plus",
-    description: "图片编辑 / Images API",
+    description: "可生成/编辑",
   },
 
   "qwen-image-edit-plus-2025-10-30": {
     family: "qianwen",
     title: "qwen-image-edit-plus-2025-10-30",
-    description: "图片编辑 / Images API",
+    description: "可生成/编辑",
   },
 };
 
@@ -1731,14 +1731,14 @@ function isGpt5ImageCandidate(model) {
 
 function getAvailableModelDescription(family, apiType) {
   if (family === "nano") {
-    return "Chat Completions";
+    return "聊天生成模式";
   }
 
   if (apiType === "responses") {
-    return "Responses API";
+    return "GPT 工具模式";
   }
 
-  return "Images API";
+  return "可生成/编辑";
 }
 
 function setModelSyncStatus(message, type = "info") {
@@ -2140,14 +2140,14 @@ function getCustomModelDescription(family, apiType) {
 
 function getCustomCardDescription(family, apiType) {
   if (family === "nano") {
-    return "Chat Completions";
+    return "聊天生成模式";
   }
 
   if (apiType === "responses") {
-    return "Responses API";
+    return "GPT 工具模式";
   }
 
-  return "Images API";
+  return "可生成/编辑";
 }
 
 function setModel(model) {
