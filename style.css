@@ -2293,3 +2293,118 @@ textarea {
   white-space: nowrap !important;
   word-break: keep-all !important;
 }
+
+/* Final image form layout polish */
+.control-panel .model-tabs-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin: 0 0 10px !important;
+  padding: 0 2px !important;
+}
+
+.control-panel .model-tabs-label {
+  min-height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+}
+
+.control-panel .model-tabs-label::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 16px;
+  margin-right: 9px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #65e8ff, #7c3aed);
+  vertical-align: -3px;
+}
+
+.control-panel .model-tabs-value {
+  min-height: 28px !important;
+  padding: 0 10px !important;
+  border: 1px solid rgba(101, 232, 255, 0.22) !important;
+  border-radius: 999px !important;
+  background: rgba(25, 183, 255, 0.08) !important;
+  color: var(--primary-2) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.control-panel .model-tabs {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  margin: 0 0 24px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(101, 232, 255, 0.12) !important;
+  background: rgba(21, 30, 48, 0.78) !important;
+}
+
+.control-panel .model-tabs button {
+  min-height: 42px !important;
+  padding: 0 10px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+.control-panel .model-tabs button::before {
+  inset: 0 auto auto 12px !important;
+  width: calc(100% - 24px) !important;
+  height: 3px !important;
+}
+
+#imageForm .prompt-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+  margin-top: 4px !important;
+}
+
+#imageForm .prompt-row > label {
+  margin: 0 !important;
+  white-space: normal !important;
+  color: var(--text) !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+}
+
+#imageForm .prompt-row > textarea {
+  grid-column: 1 !important;
+  width: 100% !important;
+  min-height: 150px !important;
+  resize: vertical !important;
+}
+
+#imageForm > .primary-btn {
+  width: 100% !important;
+}
+
+@media (max-width: 920px) {
+  .workspace,
+  .tool-workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  .control-panel,
+  .preview-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .control-panel .model-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .control-panel .model-tabs button {
+    white-space: normal !important;
+  }
+}
