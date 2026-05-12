@@ -1638,6 +1638,7 @@ function configureModelApiType(model, apiType) {
 function inferImageFamilyFromModelName(model) {
   const value = String(model || "").toLowerCase();
 
+  if (isUnsupportedImageModelName(value)) return "";
   if (isImageEditOnlyModel(value)) return "";
   if (!isLikelyImageModelName(value)) return "";
 
@@ -1685,6 +1686,8 @@ function inferImageFamilyFromModelName(model) {
 function isLikelyImageModelName(model) {
   const value = String(model || "").toLowerCase();
 
+  if (isUnsupportedImageModelName(value)) return false;
+
   if (
     value.includes("t2v") ||
     value.includes("i2v") ||
@@ -1706,6 +1709,12 @@ function isLikelyImageModelName(model) {
     value.includes("text-to-image") ||
     /^wan(?:x)?[-_.]?\d.*t2i/.test(value)
   );
+}
+
+function isUnsupportedImageModelName(model) {
+  const value = String(model || "").toLowerCase();
+
+  return /^imagen(?:[-_.]|\d)/.test(value);
 }
 
 function isImageEditOnlyModel(model) {
