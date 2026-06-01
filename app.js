@@ -418,13 +418,13 @@ function initParticleField() {
 
   const drawParticle = (particle) => {
     const isLight = document.body.classList.contains("light");
-    const alpha = isLight ? 0.42 : 0.68;
+    const alpha = isLight ? 0.42 : 0.64;
     const color =
-      particle.hue < 0.42
-        ? `rgba(102, 228, 255, ${alpha})`
-        : particle.hue < 0.72
-          ? `rgba(167, 139, 250, ${alpha})`
-          : `rgba(99, 230, 190, ${alpha})`;
+      particle.hue < 0.46
+        ? `rgba(249, 115, 22, ${alpha})`
+        : particle.hue < 0.74
+          ? `rgba(20, 184, 166, ${alpha})`
+          : `rgba(251, 191, 36, ${alpha})`;
 
     ctx.beginPath();
     ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
@@ -436,7 +436,7 @@ function initParticleField() {
     ctx.clearRect(0, 0, width, height);
 
     const isLight = document.body.classList.contains("light");
-    const lineColor = isLight ? "rgba(25, 183, 255, " : "rgba(174, 210, 255, ";
+    const lineColor = isLight ? "rgba(249, 115, 22, " : "rgba(255, 207, 160, ";
     const linkDistance = width < 760 ? 96 : 138;
 
     for (let i = 0; i < particles.length; i += 1) {
@@ -483,8 +483,8 @@ function initParticleField() {
 
     if (pointer.active) {
       const gradient = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, 210);
-      gradient.addColorStop(0, isLight ? "rgba(25, 183, 255, 0.12)" : "rgba(102, 228, 255, 0.18)");
-      gradient.addColorStop(1, "rgba(102, 228, 255, 0)");
+      gradient.addColorStop(0, isLight ? "rgba(249, 115, 22, 0.12)" : "rgba(249, 115, 22, 0.16)");
+      gradient.addColorStop(1, "rgba(249, 115, 22, 0)");
       ctx.fillStyle = gradient;
       ctx.fillRect(pointer.x - 210, pointer.y - 210, 420, 420);
     }
