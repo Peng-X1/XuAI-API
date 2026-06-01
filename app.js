@@ -1152,7 +1152,7 @@ async function refreshToolModels(tool) {
 
   if (button) {
     button.disabled = true;
-    button.textContent = "刷新中...";
+    button.textContent = "刷新中";
   }
 
   startToolTaskIndicator(
@@ -1180,43 +1180,32 @@ async function refreshToolModels(tool) {
       throw error;
     }
 
-    const modelRecords = extractModelRecordsFromModelsResponse(raw);
+    const modelNames = extractModelNamesFromModelsResponse(raw);
     const detectedModels = uniqueArray(
-      modelRecords
-        .filter(
-          (record) =>
-            isToolModelRecordForTool(record, tool) &&
-            !isToolModelHidden(tool, record.id)
-        )
-        .map((record) => record.id)
+      modelNames.filter(
+        (model) => inferToolModelType(model) === tool && !isToolModelHidden(tool, model)
+      )
     );
 
-    showToolDebug(getToolDebugBox(tool), {
-      request_url: url,
-      response: raw,
-      total_models_from_api: modelRecords.length,
-      detected_models: detectedModels,
-    });
+    pruneToolModelCards(tool, detectedModels);
+    registerToolModels(tool, detectedModels);
 
     if (!detectedModels.length) {
       setToolModelSyncTextHidden(tool, false);
       finishToolTaskIndicator(
         tool,
         "warning",
-        `接口返回 ${modelRecords.length} 个模型，但没有识别到${config.label}模型。`,
+        `没有从当前 API Key 的模型列表中识别到${config.label}模型。`,
         "未识别到可用模型。"
       );
       return;
     }
 
-    pruneToolModelCards(tool, detectedModels);
-    registerToolModels(tool, detectedModels);
-
     setToolModelSyncTextHidden(tool, true);
     finishToolTaskIndicator(
       tool,
       "success",
-      `接口返回 ${modelRecords.length} 个模型，已识别 ${detectedModels.length} 个可用${config.label}模型。`,
+      `已刷新 ${detectedModels.length} 个可用${config.label}模型。`,
       "模型刷新完成。"
     );
   } catch (error) {
@@ -1243,7 +1232,7 @@ function registerToolModels(tool, models) {
   models.forEach((model) => ensureToolModelCard(tool, model));
 
   const currentModel = normalizeModelName(config.input?.value || "");
-  if (currentModel && models.includes(currentModel)) {
+  if (currentModel) {
     setToolModel(tool, currentModel);
   } else if (models[0]) {
     setToolModel(tool, models[0]);
@@ -1259,13 +1248,13 @@ function pruneToolModelCards(tool, detectedModels) {
   config.cards.querySelectorAll(".tool-model-card").forEach((card) => {
     const model = normalizeModelName(card.dataset.toolModel);
 
-    if (!detectedSet.has(model)) {
+    if (!detectedSet.has(model) || inferToolModelType(model) !== tool) {
       card.remove();
     }
   });
 
   const currentModel = normalizeModelName(config.input?.value || "");
-  if (currentModel && !detectedSet.has(currentModel)) {
+  if (currentModel && (!detectedSet.has(currentModel) || inferToolModelType(currentModel) !== tool)) {
     setToolModel(tool, findFirstToolModel(tool) || config.defaultModel);
   }
 }
@@ -1333,96 +1322,6 @@ function getToolDebugBox(tool) {
   return null;
 }
 
-function extractModelRecordsFromModelsResponse(raw) {
-  const records = [];
-
-  const pushModel = (value, item = value) => {
-    const id = normalizeModelName(value);
-    if (!id) return;
-    records.push({ id, raw: item });
-  };
-
-  const readItem = (item) => {
-    if (!item) return;
-
-    if (typeof item === "string") {
-      pushModel(item, item);
-      return;
-    }
-
-    if (typeof item === "object") {
-      pushModel(item.id || item.model || item.name || item.model_name, item);
-    }
-  };
-
-  [
-    raw,
-    raw?.data,
-    raw?.models,
-    raw?.items,
-    raw?.results,
-    raw?.model_list,
-    raw?.data?.data,
-    raw?.data?.models,
-    raw?.data?.items,
-    raw?.data?.results,
-    raw?.data?.model_list,
-  ].forEach((value) => {
-    if (Array.isArray(value)) value.forEach(readItem);
-  });
-
-  const seen = new Set();
-  return records.filter((record) => {
-    if (seen.has(record.id)) return false;
-    seen.add(record.id);
-    return true;
-  });
-}
-
-function isToolModelRecordForTool(record, tool) {
-  const model = normalizeModelName(record?.id || record).toLowerCase();
-  const searchText = getModelRecordSearchText(record);
-
-  if (!model) return false;
-
-  if (tool === "video") {
-    return isLikelyVideoModelName(model) || isLikelyVideoModelName(searchText);
-  }
-
-  if (tool === "transcription") {
-    return isLikelyTranscriptionModelName(model) || isLikelyTranscriptionModelName(searchText);
-  }
-
-  if (tool === "realtime") {
-    return isLikelyRealtimeModelName(model) || isLikelyRealtimeModelName(searchText);
-  }
-
-  if (tool === "tts") {
-    return isLikelyTtsModelName(model) || isLikelyTtsModelName(searchText);
-  }
-
-  return false;
-}
-
-function getModelRecordSearchText(record) {
-  if (!record) return "";
-
-  const raw = record.raw ?? record;
-  let rawText = "";
-
-  if (typeof raw === "string") {
-    rawText = raw;
-  } else {
-    try {
-      rawText = JSON.stringify(raw);
-    } catch {
-      rawText = String(raw || "");
-    }
-  }
-
-  return `${record.id || ""} ${rawText}`.toLowerCase();
-}
-
 function inferToolModelType(model) {
   const value = normalizeModelName(model).toLowerCase();
 
@@ -1442,37 +1341,18 @@ function isLikelyVideoModelName(value) {
   if (
     name.includes("t2i") ||
     name.includes("text-to-image") ||
-    name.includes("text_to_image") ||
     name.includes("image-generation") ||
-    name.includes("image_generation") ||
-    name.includes("images/generations")
+    name.includes("image_generation")
   ) {
-    return hasAnyText(name, [
-      "t2v",
-      "i2v",
-      "text-to-video",
-      "text_to_video",
-      "image-to-video",
-      "image_to_video",
-      "video",
-      "视频",
-    ]);
+    return false;
   }
 
   const hasVideoMarker =
     name.includes("t2v") ||
     name.includes("i2v") ||
     name.includes("text-to-video") ||
-    name.includes("text_to_video") ||
     name.includes("image-to-video") ||
-    name.includes("image_to_video") ||
-    name.includes("video") ||
-    name.includes("videos/generations") ||
-    name.includes("video-generation") ||
-    name.includes("video_generation") ||
-    name.includes("文生视频") ||
-    name.includes("图生视频") ||
-    name.includes("视频生成");
+    name.includes("video");
 
   return (
     hasVideoMarker ||
@@ -1484,113 +1364,37 @@ function isLikelyVideoModelName(value) {
     name.includes("runway") ||
     name.includes("luma") ||
     name.includes("pika") ||
-    name.includes("pixverse") ||
-    name.includes("vidu") ||
-    name.includes("cogvideo") ||
-    name.includes("cogvideox") ||
-    name.includes("hunyuan-video") ||
-    name.includes("hunyuanvideo") ||
-    name.includes("stable-video") ||
-    name.includes("stablevideo") ||
-    name.includes("seedvideo") ||
-    /^wan(?:x)?[-_.]?\d.*(?:t2v|i2v|video)/.test(name) ||
+    /^wan(?:x)?[-_.]?\d.*(?:t2v|i2v)/.test(name) ||
     /(?:^|[-_.])minimax[-_.]?.*(?:video|t2v|i2v|hailuo)/.test(name)
   );
 }
 
 function isLikelyTranscriptionModelName(value) {
-  const name = String(value || "").toLowerCase();
-
   return (
-    name.includes("whisper") ||
-    name.includes("transcrib") ||
-    name.includes("transcript") ||
-    name.includes("speech-to-text") ||
-    name.includes("speech_to_text") ||
-    name.includes("audio/transcriptions") ||
-    name.includes("audio.transcriptions") ||
-    name.includes("audio_transcriptions") ||
-    name.includes("stt") ||
-    name.includes("asr") ||
-    name.includes("paraformer") ||
-    name.includes("sensevoice") ||
-    name.includes("funasr") ||
-    name.includes("distil-whisper") ||
-    name.includes("canary") ||
-    name.includes("音频转文字") ||
-    name.includes("语音转文字") ||
-    name.includes("语音识别") ||
-    name.includes("音频转写") ||
-    name.includes("语音转写") ||
-    name.includes("转写模型") ||
-    name.includes("转录")
+    value.includes("whisper") ||
+    value.includes("transcrib") ||
+    value.includes("transcript") ||
+    value.includes("speech-to-text") ||
+    value.includes("stt") ||
+    value.includes("asr")
   );
 }
 
 function isLikelyRealtimeModelName(value) {
-  const name = String(value || "").toLowerCase();
+  return value.includes("realtime") || value.includes("real-time");
+}
 
-  if (hasRealtimeModelSignal(name)) return true;
-
-  if (isLikelyTranscriptionModelName(name) || hasTtsModelSignal(name)) {
+function isLikelyTtsModelName(value) {
+  if (isLikelyTranscriptionModelName(value) || isLikelyRealtimeModelName(value)) {
     return false;
   }
 
   return (
-    name.includes("realtime") ||
-    name.includes("real-time") ||
-    name.includes("real_time")
+    value.includes("tts") ||
+    value.includes("text-to-speech") ||
+    value.includes("speech") ||
+    value.includes("voice")
   );
-}
-
-function isLikelyTtsModelName(value) {
-  const name = String(value || "").toLowerCase();
-  if (isLikelyTranscriptionModelName(name) || hasRealtimeModelSignal(name)) return false;
-
-  return hasTtsModelSignal(name) || name.includes("voice");
-}
-
-function hasRealtimeModelSignal(name) {
-  return (
-    name.includes("/v1/realtime") ||
-    name.includes("realtime=v1") ||
-    name.includes("realtime api") ||
-    name.includes("webrtc") ||
-    name.includes("gpt-realtime") ||
-    name.includes("realtime-preview") ||
-    name.includes("real-time-preview") ||
-    name.includes("实时语音") ||
-    name.includes("实时对话")
-  );
-}
-
-function hasTtsModelSignal(name) {
-  return (
-    name.includes("tts") ||
-    name.includes("text-to-speech") ||
-    name.includes("text_to_speech") ||
-    name.includes("audio/speech") ||
-    name.includes("audio.speech") ||
-    name.includes("audio_speech") ||
-    name.includes("speech-generation") ||
-    name.includes("speech_generation") ||
-    name.includes("speech-synthesis") ||
-    name.includes("speech_synthesis") ||
-    name.includes("cosyvoice") ||
-    name.includes("fish-speech") ||
-    name.includes("elevenlabs") ||
-    name.includes("step-tts") ||
-    name.includes("qwen-tts") ||
-    name.includes("文字转语音") ||
-    name.includes("文本转语音") ||
-    name.includes("语音合成") ||
-    name.includes("语音生成") ||
-    name.includes("朗读")
-  );
-}
-
-function hasAnyText(value, needles) {
-  return needles.some((needle) => value.includes(needle));
 }
 
 function lockProviderSettings() {
@@ -1609,6 +1413,7 @@ function lockProviderSettings() {
     apiBase.disabled = true;
   }
 }
+
 function initApiConnectionUi() {
   const providerRow = provider?.closest(".field-row");
   const apiBaseRow = apiBase?.closest(".field-row");
@@ -1882,20 +1687,18 @@ async function refreshAvailableImageModels() {
       throw error;
     }
 
-    const modelRecords = extractModelRecordsFromModelsResponse(raw);
-    const modelNames = modelRecords.map((record) => record.id);
+    const modelNames = extractModelNamesFromModelsResponse(raw);
     const registered = registerAvailableImageModels(modelNames);
 
     showDebug({
       request_url: url,
       response: raw,
-      total_models_from_api: modelNames.length,
       detected_image_models: registered.models,
       detected_by_family: registered.byFamily,
     });
 
     if (!registered.total) {
-      const message = `接口返回 ${modelNames.length} 个模型，但没有识别到绘图模型。`;
+      const message = "没有从当前 API Key 的模型列表中识别到绘图模型。";
       finishModelRefreshIndicator("warning", message, "未识别到可用模型。");
       return;
     }
@@ -1903,7 +1706,7 @@ async function refreshAvailableImageModels() {
     const activeFamily = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL);
     applyModelFamilyUi(activeFamily, modelSelect?.value || DEFAULT_IMAGE_MODEL);
 
-    const message = `接口返回 ${modelNames.length} 个模型，已识别 ${registered.total} 个可用绘图模型。`;
+    const message = `已刷新 ${registered.total} 个可用绘图模型。`;
     finishModelRefreshIndicator("success", message, "模型刷新完成。");
   } catch (error) {
     console.error(error);
