@@ -351,13 +351,13 @@ init();
 function init() {
   console.log("XuAI app.js 已加载");
 
-  initParticleField();
-
   const savedTheme = localStorage.getItem("xuai-theme");
   if (savedTheme === "light") {
     document.body.classList.add("light");
     if (themeBtn) themeBtn.textContent = "☀️";
   }
+
+  initParticleField();
 
   normalizeModelDom();
   lockProviderSettings();
@@ -383,26 +383,21 @@ function init() {
 function initParticleField() {
   if (!particleCanvas || !particleCanvas.getContext) return;
 
-  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const reduceMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   const ctx = particleCanvas.getContext("2d");
-  const mouse = { x: -9999, y: -9999, active: false };
   const particles = [];
+  const pointer = { x: -1000, y: -1000, active: false };
   let width = 0;
   let height = 0;
   let frameId = 0;
 
-  const getParticleCount = () => {
-    const area = window.innerWidth * window.innerHeight;
-    return Math.max(42, Math.min(96, Math.round(area / 17000)));
-  };
-
   const makeParticle = () => ({
     x: Math.random() * width,
     y: Math.random() * height,
-    vx: (Math.random() - 0.5) * 0.34,
-    vy: (Math.random() - 0.5) * 0.34,
-    r: 1.1 + Math.random() * 1.9,
-    hue: Math.random(),
+    vx: (Math.random() - 0.5) * 0.28,
+    vy: (Math.random() - 0.5) * 0.28,
+    size: 1 + Math.random() * 1.8,
   });
 
   const resize = () => {
@@ -415,33 +410,18 @@ function initParticleField() {
     particleCanvas.style.height = `${height}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const targetCount = getParticleCount();
+    const targetCount = Math.max(36, Math.min(72, Math.round((width * height) / 22000)));
     while (particles.length < targetCount) particles.push(makeParticle());
     particles.length = targetCount;
-  };
-
-  const drawParticle = (particle) => {
-    const isLight = document.body.classList.contains("light");
-    const alpha = isLight ? 0.46 : 0.72;
-    const color =
-      particle.hue < 0.42
-        ? `rgba(102, 228, 255, ${alpha})`
-        : particle.hue < 0.72
-          ? `rgba(167, 139, 250, ${alpha})`
-          : `rgba(99, 230, 190, ${alpha})`;
-
-    ctx.beginPath();
-    ctx.arc(particle.x, particle.y, particle.r, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
   };
 
   const draw = () => {
     ctx.clearRect(0, 0, width, height);
 
     const isLight = document.body.classList.contains("light");
-    const lineAlpha = isLight ? 0.11 : 0.16;
-    const maxDistance = width < 640 ? 96 : 142;
+    const dotColor = isLight ? "rgba(25, 183, 255, 0.42)" : "rgba(101, 232, 255, 0.58)";
+    const lineColor = isLight ? "rgba(25, 183, 255, " : "rgba(101, 232, 255, ";
+    const linkDistance = width < 760 ? 92 : 126;
 
     for (let i = 0; i < particles.length; i += 1) {
       const particle = particles[i];
@@ -455,68 +435,64 @@ function initParticleField() {
         if (particle.y < -20) particle.y = height + 20;
         if (particle.y > height + 20) particle.y = -20;
 
-        if (mouse.active) {
-          const dx = particle.x - mouse.x;
-          const dy = particle.y - mouse.y;
-          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (pointer.active) {
+          const dx = particle.x - pointer.x;
+          const dy = particle.y - pointer.y;
+          const distance = Math.hypot(dx, dy) || 1;
 
-          if (distance < 180) {
-            const force = (180 - distance) / 180;
-            particle.x += (dx / distance) * force * 1.6;
-            particle.y += (dy / distance) * force * 1.6;
+          if (distance < 150) {
+            const force = (150 - distance) / 150;
+            particle.x += (dx / distance) * force;
+            particle.y += (dy / distance) * force;
           }
         }
       }
 
       for (let j = i + 1; j < particles.length; j += 1) {
         const next = particles[j];
-        const dx = particle.x - next.x;
-        const dy = particle.y - next.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = Math.hypot(particle.x - next.x, particle.y - next.y);
 
-        if (distance < maxDistance) {
+        if (distance < linkDistance) {
           ctx.beginPath();
           ctx.moveTo(particle.x, particle.y);
           ctx.lineTo(next.x, next.y);
-          ctx.strokeStyle = `rgba(174, 210, 255, ${lineAlpha * (1 - distance / maxDistance)})`;
+          ctx.strokeStyle = `${lineColor}${0.12 * (1 - distance / linkDistance)})`;
           ctx.lineWidth = 1;
           ctx.stroke();
         }
       }
 
-      drawParticle(particle);
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      ctx.fillStyle = dotColor;
+      ctx.fill();
     }
 
-    if (mouse.active) {
-      const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 220);
-      gradient.addColorStop(0, isLight ? "rgba(102, 228, 255, 0.16)" : "rgba(102, 228, 255, 0.2)");
-      gradient.addColorStop(1, "rgba(102, 228, 255, 0)");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(mouse.x - 220, mouse.y - 220, 440, 440);
-    }
-
-    if (!reduceMotion) {
-      frameId = window.requestAnimationFrame(draw);
-    }
-  };
-
-  const setMouse = (event) => {
-    mouse.x = event.clientX;
-    mouse.y = event.clientY;
-    mouse.active = true;
-  };
-
-  const clearMouse = () => {
-    mouse.active = false;
+    if (!reduceMotion) frameId = window.requestAnimationFrame(draw);
   };
 
   resize();
   draw();
 
   window.addEventListener("resize", resize);
-  window.addEventListener("pointermove", setMouse, { passive: true });
-  window.addEventListener("pointerleave", clearMouse);
-  window.addEventListener("blur", clearMouse);
+  window.addEventListener(
+    "pointermove",
+    (event) => {
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      pointer.active = true;
+    },
+    { passive: true }
+  );
+  window.addEventListener("pointerleave", () => {
+    pointer.active = false;
+  });
+  window.addEventListener("blur", () => {
+    pointer.active = false;
+  });
+  window.addEventListener("xuai-theme-change", () => {
+    if (reduceMotion) draw();
+  });
   window.addEventListener("beforeunload", () => {
     if (frameId) window.cancelAnimationFrame(frameId);
   });
@@ -531,6 +507,7 @@ function bindEvents() {
       localStorage.setItem("xuai-theme", isLight ? "light" : "dark");
 
       themeBtn.textContent = isLight ? "☀️" : "🌙";
+      window.dispatchEvent(new Event("xuai-theme-change"));
     });
   }
 
