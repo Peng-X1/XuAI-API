@@ -78,7 +78,7 @@
             </div>
             <div class="showcase-console__line">
               <b>model</b>
-              <span id="heroShowcaseModel">gpt-image-2</span>
+              <span id="heroShowcaseModel">等待刷新</span>
             </div>
             <div class="showcase-console__meter">
               <i></i>
@@ -91,7 +91,7 @@
         <aside class="panel control-panel">
           <div class="model-tabs-head">
             <span class="model-tabs-label">模型厂商</span>
-            <span class="model-tabs-value">当前可切换 5 家</span>
+            <span class="model-tabs-value">刷新后显示当前 Key 的模型</span>
           </div>
           <div class="model-tabs">
             <button type="button" data-family="nano">Nano Banana</button>
@@ -163,216 +163,13 @@
 
             <div class="field-row model-picker-row form-row-horizontal">
               <label data-model-picker-label>生成模型</label>
-              <div class="cards">
-                <!-- Nano Banana / Gemini 模型 -->
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="nano"
-                  data-model="gemini-3-pro-image-preview"
-                  hidden
-                >
-                  <strong>gemini-3-pro-image-preview</strong>
-                  <span>聊天生成模式</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="nano"
-                  data-model="gemini-2.5-flash-image"
-                  hidden
-                >
-                  <strong>gemini-2.5-flash-image</strong>
-                  <span>聊天生成模式</span>
-                </button>
-
-                <!-- GPT-Image 模型 -->
-                <button
-                  type="button"
-                  class="model-card active"
-                  data-family="gpt"
-                  data-model="gpt-image-2"
-                >
-                  <strong>gpt-image-2</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
-                  data-model="gpt-image-1"
-                >
-                  <strong>gpt-image-1</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="gpt"
-                  data-model="dall-e-3"
-                >
-                  <strong>dall-e-3</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <!-- Grok 模型 -->
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="grok"
-                  data-model="grok-imagine-image"
-                  hidden
-                >
-                  <strong>grok-imagine-image</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="grok"
-                  data-model="grok-imagine-image-pro"
-                  hidden
-                >
-                  <strong>grok-imagine-image-pro</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <!-- 豆包模型 -->
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="doubao"
-                  data-model="doubao-seedream-4-0-250828"
-                  hidden
-                >
-                  <strong>doubao-seedream-4-0-250828</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="doubao"
-                  data-model="doubao-seededit-3-0-i2i-250628"
-                  hidden
-                >
-                  <strong>doubao-seededit-3-0-i2i-250628</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="doubao"
-                  data-model="doubao-seedream-3-0-t2i-250415"
-                  hidden
-                >
-                  <strong>doubao-seedream-3-0-t2i-250415</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <!-- 千问模型 -->
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="qianwen"
-                  data-model="qwen-image-edit-plus"
-                  hidden
-                >
-                  <strong>qwen-image-edit-plus</strong>
-                  <span>可生成/编辑</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="model-card"
-                  data-family="qianwen"
-                  data-model="qwen-image-edit-plus-2025-10-30"
-                  hidden
-                >
-                  <strong>qwen-image-edit-plus-2025-10-30</strong>
-                  <span>可生成/编辑</span>
-                </button>
-              </div>
+              <div class="cards"></div>
             </div>
 
 
             <div class="field-row model-select-row form-row-horizontal" hidden>
               <label for="model">模型</label>
-              <select id="model">
-                <!-- Nano Banana / Gemini -->
-                <option
-                  value="gemini-3-pro-image-preview"
-                  data-family="nano"
-                >
-                  gemini-3-pro-image-preview
-                </option>
-
-                <option
-                  value="gemini-2.5-flash-image"
-                  data-family="nano"
-                >
-                  gemini-2.5-flash-image
-                </option>
-
-                <!-- GPT-Image -->
-                <option
-                  value="gpt-image-2"
-                  data-family="gpt"
-                  selected
-                >
-                  gpt-image-2
-                </option>
-
-                <option
-                  value="gpt-image-1"
-                  data-family="gpt"
-                >
-                  gpt-image-1
-                </option>
-
-                <option
-                  value="dall-e-3"
-                  data-family="gpt"
-                >
-                  dall-e-3
-                </option>
-
-                <!-- Grok -->
-                <option value="grok-imagine-image" data-family="grok">
-                  grok-imagine-image
-                </option>
-
-                <option value="grok-imagine-image-pro" data-family="grok">
-                  grok-imagine-image-pro
-                </option>
-
-                <!-- 豆包 -->
-                <option value="doubao-seedream-4-0-250828" data-family="doubao">
-                  doubao-seedream-4-0-250828
-                </option>
-
-                <option value="doubao-seededit-3-0-i2i-250628" data-family="doubao">
-                  doubao-seededit-3-0-i2i-250628
-                </option>
-
-                <option value="doubao-seedream-3-0-t2i-250415" data-family="doubao">
-                  doubao-seedream-3-0-t2i-250415
-                </option>
-
-                <!-- 千问 -->
-                <option value="qwen-image-edit-plus" data-family="qianwen">
-                  qwen-image-edit-plus
-                </option>
-
-                <option value="qwen-image-edit-plus-2025-10-30" data-family="qianwen">
-                  qwen-image-edit-plus-2025-10-30
-                </option>
-              </select>
+              <select id="model"></select>
             </div>
 
             <div class="field-row prompt-row form-row-horizontal">
@@ -406,9 +203,9 @@
 
           <div class="api-info" hidden>
             <span id="apiModeBadge">真实 API</span>
-            <strong id="apiInfoTitle">当前使用 gpt-image-2</strong>
+            <strong id="apiInfoTitle">请先刷新可用模型</strong>
             <p id="apiInfoDesc">
-              当前会调用 XuAI API 站生成图片。
+              刷新模型后，仅显示当前 API Key 返回的可用模型。
             </p>
           </div>
 
@@ -512,13 +309,8 @@
             <div class="field-row form-row-horizontal tool-model-picker-row" data-tool-model-picker="transcription">
               <label>转写模型</label>
               <div class="tool-stack">
-                <input id="transcriptionModel" type="hidden" value="whisper-1" />
-                <div id="transcriptionModelCards" class="tool-model-cards">
-                  <button type="button" class="tool-model-card active" data-tool-model="whisper-1">
-                    <strong>whisper-1</strong>
-                    <span>Transcriptions API</span>
-                  </button>
-                </div>
+                <input id="transcriptionModel" type="hidden" value="" />
+                <div id="transcriptionModelCards" class="tool-model-cards"></div>
                 <span id="transcriptionModelSyncText" class="model-sync-text">填入 API Key 后可刷新可用转写模型</span>
               </div>
             </div>
@@ -553,13 +345,8 @@
             <div class="field-row form-row-horizontal tool-model-picker-row" data-tool-model-picker="realtime">
               <label>实时模型</label>
               <div class="tool-stack">
-                <input id="realtimeModel" type="hidden" value="gpt-realtime" />
-                <div id="realtimeModelCards" class="tool-model-cards">
-                  <button type="button" class="tool-model-card active" data-tool-model="gpt-realtime">
-                    <strong>gpt-realtime</strong>
-                    <span>Realtime API</span>
-                  </button>
-                </div>
+                <input id="realtimeModel" type="hidden" value="" />
+                <div id="realtimeModelCards" class="tool-model-cards"></div>
                 <span id="realtimeModelSyncText" class="model-sync-text">填入 API Key 后可刷新可用实时语音模型</span>
               </div>
             </div>
@@ -594,13 +381,8 @@
             <div class="field-row form-row-horizontal tool-model-picker-row" data-tool-model-picker="tts">
               <label>语音模型</label>
               <div class="tool-stack">
-                <input id="ttsModel" type="hidden" value="tts-1" />
-                <div id="ttsModelCards" class="tool-model-cards">
-                  <button type="button" class="tool-model-card active" data-tool-model="tts-1">
-                    <strong>tts-1</strong>
-                    <span>Speech API</span>
-                  </button>
-                </div>
+                <input id="ttsModel" type="hidden" value="" />
+                <div id="ttsModelCards" class="tool-model-cards"></div>
                 <span id="ttsModelSyncText" class="model-sync-text">填入 API Key 后可刷新可用文字转语音模型</span>
               </div>
             </div>

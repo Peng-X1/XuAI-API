@@ -2,17 +2,6 @@ const FIXED_PROVIDER_ID = "xuai";
 const FIXED_PROVIDER_NAME = "XuAI API 中转站";
 const FIXED_API_BASE = "https://api.xuai.chat";
 
-const DEFAULT_IMAGE_MODEL = "gpt-image-2";
-const DEFAULT_NANO_MODEL = "gemini-3-pro-image-preview";
-const GPT5_IMAGE_MODEL_ORDER = [
-  "gpt-5.5",
-  "gpt-5.4",
-  "gpt-5.3",
-  "gpt-5.2",
-  "gpt-5.1",
-  "gpt-5",
-];
-
 // 自定义绘图模型保存在浏览器本地，不会提交到服务器或 GitHub。
 // GPT/Grok-Imagine/豆包/千问默认按 Images API 调用；Nano Banana 默认按 Chat Completions 图片调用。
 const CUSTOM_MODEL_STORAGE_KEY = "xuai-custom-image-models";
@@ -47,101 +36,22 @@ const CUSTOM_MODEL_FAMILY_CONFIG = {
 };
 
 const CUSTOM_IMAGE_MODEL_RECORDS = new Map();
+const AVAILABLE_IMAGE_MODELS = new Set();
+const AVAILABLE_TOOL_MODELS = {
+  video: new Set(),
+  transcription: new Set(),
+  realtime: new Set(),
+  tts: new Set(),
+};
 
 // GPT-5 系列不再作为固定预设，只在刷新模型接口返回后加入 Responses API 列表。
 const RESPONSES_IMAGE_MODELS = new Set();
 
-const GEMINI_IMAGE_MODELS = new Set([
-  "gemini-3-pro-image-preview",
-  "gemini-2.5-flash-image",
-]);
+const GEMINI_IMAGE_MODELS = new Set();
 
-const CHAT_COMPLETIONS_IMAGE_MODELS = new Set([
-  "gemini-3-pro-image-preview",
-  "gemini-2.5-flash-image",
-]);
+const CHAT_COMPLETIONS_IMAGE_MODELS = new Set();
 
-const MODEL_FAMILY_DEFAULTS = {
-  nano: DEFAULT_NANO_MODEL,
-  gpt: DEFAULT_IMAGE_MODEL,
-  grok: "grok-imagine-image",
-  doubao: "doubao-seedream-4-0-250828",
-  qianwen: "qwen-image-edit-plus",
-};
-
-const MODEL_META = {
-  "gemini-3-pro-image-preview": {
-    family: "nano",
-    title: "gemini-3-pro-image-preview",
-    description: "Gemini 3 Pro 图片预览模型，适合更高质量的图像生成。",
-  },
-
-  "gemini-2.5-flash-image": {
-    family: "nano",
-    title: "gemini-2.5-flash-image",
-    description: "Gemini 2.5 Flash 图片模型，速度更快，适合快速出图。",
-  },
-
-  "gpt-image-2": {
-    family: "gpt",
-    title: "gpt-image-2",
-    description: "可生成/编辑",
-  },
-
-  "gpt-image-1": {
-    family: "gpt",
-    title: "gpt-image-1",
-    description: "可生成/编辑",
-  },
-
-  "dall-e-3": {
-    family: "gpt",
-    title: "dall-e-3",
-    description: "可生成/编辑",
-  },
-
-  "grok-imagine-image": {
-    family: "grok",
-    title: "grok-imagine-image",
-    description: "可生成/编辑",
-  },
-
-  "grok-imagine-image-pro": {
-    family: "grok",
-    title: "grok-imagine-image-pro",
-    description: "可生成/编辑",
-  },
-
-  "doubao-seedream-4-0-250828": {
-    family: "doubao",
-    title: "doubao-seedream-4-0-250828",
-    description: "可生成/编辑",
-  },
-
-  "doubao-seededit-3-0-i2i-250628": {
-    family: "doubao",
-    title: "doubao-seededit-3-0-i2i-250628",
-    description: "可生成/编辑",
-  },
-
-  "doubao-seedream-3-0-t2i-250415": {
-    family: "doubao",
-    title: "doubao-seedream-3-0-t2i-250415",
-    description: "可生成/编辑",
-  },
-
-  "qwen-image-edit-plus": {
-    family: "qianwen",
-    title: "qwen-image-edit-plus",
-    description: "可生成/编辑",
-  },
-
-  "qwen-image-edit-plus-2025-10-30": {
-    family: "qianwen",
-    title: "qwen-image-edit-plus-2025-10-30",
-    description: "可生成/编辑",
-  },
-};
+const MODEL_META = {};
 
 // gpt-5.4 模型不显示/不允许这些尺寸。
 // 如果你已经从 UI 删除尺寸控件，这里仍然作为防御性兜底保留。
@@ -176,6 +86,7 @@ const editImageInput = $("#editImageInput");
 const editMaskInput = $("#editMaskInput");
 const editImagePreview = $("#editImagePreview");
 const modelPickerLabel = $("[data-model-picker-label]");
+const modelTabsValue = $(".model-tabs-value");
 const sizeSelect = $("#size");
 const countInput = $("#count");
 const generateBtn = $("#generateBtn");
@@ -302,6 +213,7 @@ let toolModelRefreshBtns = [];
 let historyFilter = "all";
 let activeTool = "image";
 let toolSwitchTimers = [];
+let displayedModelsApiKey = "";
 const taskIndicators = {};
 const taskStatusBadges = {};
 
@@ -366,10 +278,7 @@ function init() {
   initApiConnectionUi();
   initTaskStatusUi();
 
-  const savedModel = normalizeModelName(
-    localStorage.getItem("xuai-model") || DEFAULT_IMAGE_MODEL
-  );
-
+  const savedModel = normalizeModelName(localStorage.getItem("xuai-model") || "");
   setModel(savedModel);
   syncImageModeUi();
   renderHistory();
@@ -570,6 +479,7 @@ function bindEvents() {
   if (apiKey) {
     apiKey.addEventListener("input", () => {
       syncSharedApiKeyInputs(apiKey.value);
+      syncDisplayedModelsForCurrentKey();
     });
 
     apiKey.addEventListener("change", () => {
@@ -803,7 +713,7 @@ function syncImageModeUi() {
     }
   }
 
-  applyModelFamilyUi(getModelFamily(currentModel || DEFAULT_IMAGE_MODEL), currentModel || DEFAULT_IMAGE_MODEL);
+  applyModelFamilyUi(getModelFamily(currentModel), currentModel);
 
   if (promptInput) {
     promptInput.placeholder = isEdit
@@ -915,6 +825,7 @@ function initSharedApiKeyInputs() {
       }
 
       syncSharedApiKeyInputs(input.value, input);
+      syncDisplayedModelsForCurrentKey();
     });
   });
 
@@ -952,19 +863,63 @@ function getApiKeyValue() {
   return apiKey?.value.trim() || toolApiKeyInputs.find((input) => input.value.trim())?.value.trim() || "";
 }
 
+function clearImageModelSelection() {
+  AVAILABLE_IMAGE_MODELS.clear();
+  [RESPONSES_IMAGE_MODELS, CHAT_COMPLETIONS_IMAGE_MODELS, GEMINI_IMAGE_MODELS].forEach((set) => {
+    set.clear();
+  });
+
+  $$(".model-card").forEach((card) => card.remove());
+  Array.from(modelSelect?.options || []).forEach((option) => option.remove());
+
+  if (modelSelect) {
+    modelSelect.value = "";
+  }
+
+  applyModelFamilyUi("gpt", "");
+  updateEmptyPreviewState("");
+  updateApiInfo();
+}
+
+function clearToolModelSelection(tool) {
+  const config = getToolModelConfig(tool);
+
+  if (AVAILABLE_TOOL_MODELS[tool]) {
+    AVAILABLE_TOOL_MODELS[tool].clear();
+  }
+
+  config?.cards?.querySelectorAll(".tool-model-card").forEach((card) => card.remove());
+  setToolModel(tool, "");
+}
+
+function clearAllDisplayedModels() {
+  clearImageModelSelection();
+  ["video", "transcription", "realtime", "tts"].forEach(clearToolModelSelection);
+}
+
+function syncDisplayedModelsForCurrentKey() {
+  const key = getApiKeyValue();
+
+  if (displayedModelsApiKey && displayedModelsApiKey !== key) {
+    clearAllDisplayedModels();
+  }
+
+  if (!key) {
+    clearAllDisplayedModels();
+  }
+
+  displayedModelsApiKey = key;
+}
+
 function normalizeToolModelCards() {
   ["video", "transcription", "realtime", "tts"].forEach((tool) => {
     const config = getToolModelConfig(tool);
     if (!config?.cards) return;
 
-    config.cards.querySelectorAll(".tool-model-card").forEach((card) => {
-      if (isToolModelHidden(tool, card.dataset.toolModel)) {
-        card.remove();
-      }
-    });
+    config.cards.querySelectorAll(".tool-model-card").forEach((card) => card.remove());
 
     bindToolModelCards(config.cards);
-    setToolModel(tool, findFirstToolModel(tool) || config.defaultModel);
+    setToolModel(tool, "");
   });
 }
 
@@ -981,7 +936,7 @@ function getToolModelConfig(tool) {
     },
     transcription: {
       label: "转写",
-      defaultModel: "whisper-1",
+      defaultModel: "",
       tag: "Transcriptions API",
       input: transcriptionModelInput,
       cards: transcriptionModelCards,
@@ -990,7 +945,7 @@ function getToolModelConfig(tool) {
     },
     realtime: {
       label: "实时语音",
-      defaultModel: "gpt-realtime",
+      defaultModel: "",
       tag: "Realtime API",
       input: realtimeModelInput,
       cards: realtimeModelCards,
@@ -999,7 +954,7 @@ function getToolModelConfig(tool) {
     },
     tts: {
       label: "文字转语音",
-      defaultModel: "tts-1",
+      defaultModel: "",
       tag: "Speech API",
       input: ttsModelInput,
       cards: ttsModelCards,
@@ -1045,7 +1000,7 @@ function setToolModel(tool, model) {
   }
 
   if (isToolModelHidden(tool, model)) {
-    model = findFirstToolModel(tool) || config.defaultModel;
+    model = findFirstToolModel(tool) || "";
   }
 
   if (config.input) {
@@ -1111,7 +1066,7 @@ function hideToolModel(tool, model) {
     });
 
   if (normalizeModelName(config.input?.value || "") === model) {
-    setToolModel(tool, findFirstToolModel(tool) || config.defaultModel);
+    setToolModel(tool, findFirstToolModel(tool) || "");
   }
 
   setToolModelSyncStatus(tool, `已隐藏模型 ${model}，刷新时不会再显示。`, "success");
@@ -1128,6 +1083,24 @@ function isToolModelHidden(tool, model) {
   return (HIDDEN_TOOL_MODELS[tool] || []).includes(normalizeModelName(model));
 }
 
+function setAvailableToolModels(tool, models) {
+  if (!AVAILABLE_TOOL_MODELS[tool]) return;
+
+  AVAILABLE_TOOL_MODELS[tool] = new Set(models.map((model) => normalizeModelName(model)));
+}
+
+function isAvailableToolModel(tool, model) {
+  model = normalizeModelName(model);
+  return Boolean(model && AVAILABLE_TOOL_MODELS[tool]?.has(model));
+}
+
+function getSelectedToolModel(tool) {
+  const config = getToolModelConfig(tool);
+  const model = normalizeModelName(config?.input?.value || "");
+
+  return isAvailableToolModel(tool, model) ? model : "";
+}
+
 async function refreshToolModels(tool) {
   const config = getToolModelConfig(tool);
   const key = getApiKeyValue();
@@ -1139,6 +1112,8 @@ async function refreshToolModels(tool) {
     apiKey?.focus();
     return;
   }
+
+  syncDisplayedModelsForCurrentKey();
 
   const button = toolModelRefreshBtns.find(
     (item) => item.dataset.refreshToolModels === tool
@@ -1182,6 +1157,8 @@ async function refreshToolModels(tool) {
         (model) => inferToolModelType(model) === tool && !isToolModelHidden(tool, model)
       )
     );
+    setAvailableToolModels(tool, detectedModels);
+    displayedModelsApiKey = key;
 
     pruneToolModelCards(tool, detectedModels);
     registerToolModels(tool, detectedModels);
@@ -1225,13 +1202,16 @@ function registerToolModels(tool, models) {
   const config = getToolModelConfig(tool);
   if (!config?.cards) return;
 
+  const availableModels = new Set(models.map((model) => normalizeModelName(model)));
   models.forEach((model) => ensureToolModelCard(tool, model));
 
   const currentModel = normalizeModelName(config.input?.value || "");
-  if (currentModel) {
+  if (currentModel && availableModels.has(currentModel)) {
     setToolModel(tool, currentModel);
   } else if (models[0]) {
     setToolModel(tool, models[0]);
+  } else {
+    setToolModel(tool, "");
   }
 }
 
@@ -1244,14 +1224,14 @@ function pruneToolModelCards(tool, detectedModels) {
   config.cards.querySelectorAll(".tool-model-card").forEach((card) => {
     const model = normalizeModelName(card.dataset.toolModel);
 
-    if (!detectedSet.has(model) || inferToolModelType(model) !== tool) {
+    if (!detectedSet.has(model)) {
       card.remove();
     }
   });
 
   const currentModel = normalizeModelName(config.input?.value || "");
-  if (currentModel && (!detectedSet.has(currentModel) || inferToolModelType(currentModel) !== tool)) {
-    setToolModel(tool, findFirstToolModel(tool) || config.defaultModel);
+  if (currentModel && !detectedSet.has(currentModel)) {
+    setToolModel(tool, findFirstToolModel(tool) || "");
   }
 }
 
@@ -1459,7 +1439,11 @@ function normalizeModelDom() {
 
       const model = normalizeModelName(option.value);
 
-      if (HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) {
+      if (
+        !AVAILABLE_IMAGE_MODELS.has(model) ||
+        HIDDEN_IMAGE_MODELS.has(model) ||
+        isImageEditOnlyModel(model)
+      ) {
         option.remove();
         return;
       }
@@ -1479,7 +1463,11 @@ function normalizeModelDom() {
 
     const model = normalizeModelName(card.dataset.model);
 
-    if (HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) {
+    if (
+      !AVAILABLE_IMAGE_MODELS.has(model) ||
+      HIDDEN_IMAGE_MODELS.has(model) ||
+      isImageEditOnlyModel(model)
+    ) {
       card.remove();
       return;
     }
@@ -1564,21 +1552,19 @@ function getModelFamily(model) {
 function setModelFamily(family) {
   if (!family) return;
 
-  const currentModel = normalizeModelName(
-    modelSelect?.value || DEFAULT_IMAGE_MODEL
-  );
+  const currentModel = normalizeModelName(modelSelect?.value || "");
 
   if (getModelFamily(currentModel) === family) {
     applyModelFamilyUi(family, currentModel);
     return;
   }
 
-  const nextModel = findFirstModelInFamily(family) || MODEL_FAMILY_DEFAULTS[family];
+  const nextModel = findFirstModelInFamily(family);
 
   if (!nextModel) {
     applyModelFamilyUi(family, currentModel);
     setStatus(
-      `${getModelFamilyLabel(family)} 分组暂无内置模型，请在下方添加自定义绘图模型。`,
+      `${getModelFamilyLabel(family)} 分组暂无当前 API Key 可用模型，请先刷新模型列表。`,
       "warning"
     );
     return;
@@ -1590,11 +1576,18 @@ function setModelFamily(family) {
 function applyModelFamilyUi(family, activeModel) {
   family = family || getModelFamily(activeModel);
   activeModel = normalizeModelName(activeModel);
+  const availableFamilies = getAvailableImageFamilies();
 
   $$(".model-tabs button").forEach((tab) => {
     const tabFamily = tab.dataset.family || inferFamilyFromTabText(tab.textContent);
-    tab.classList.toggle("active", tabFamily === family);
+    const isAvailable = availableFamilies.has(tabFamily);
+
+    tab.hidden = !isAvailable;
+    tab.disabled = !isAvailable;
+    tab.classList.toggle("active", isAvailable && tabFamily === family);
   });
+
+  updateModelTabsSummary(availableFamilies.size);
 
   if (modelSelect) {
     Array.from(modelSelect.options).forEach((option) => {
@@ -1618,6 +1611,26 @@ function applyModelFamilyUi(family, activeModel) {
     card.classList.toggle("active", shouldShow && cardModel === activeModel);
   });
 
+}
+
+function getAvailableImageFamilies() {
+  const families = new Set();
+
+  AVAILABLE_IMAGE_MODELS.forEach((model) => {
+    if (shouldShowModelForCurrentMode(model)) {
+      families.add(getModelFamily(model));
+    }
+  });
+
+  return families;
+}
+
+function updateModelTabsSummary(count) {
+  if (!modelTabsValue) return;
+
+  modelTabsValue.textContent = count
+    ? `当前 Key 可切换 ${count} 类模型`
+    : "刷新后显示当前 Key 的模型";
 }
 
 function ensureModelOption(model) {
@@ -1645,6 +1658,38 @@ function ensureModelOption(model) {
   modelSelect.appendChild(option);
 }
 
+function pruneImageModels(availableModels) {
+  const availableSet = new Set(availableModels.map((model) => normalizeModelName(model)));
+  AVAILABLE_IMAGE_MODELS.clear();
+  availableSet.forEach((model) => AVAILABLE_IMAGE_MODELS.add(model));
+
+  $$(".model-card").forEach((card) => {
+    const model = normalizeModelName(card.dataset.model);
+    if (!availableSet.has(model)) {
+      card.remove();
+    }
+  });
+
+  Array.from(modelSelect?.options || []).forEach((option) => {
+    const model = normalizeModelName(option.value);
+    if (!availableSet.has(model)) {
+      option.remove();
+    }
+  });
+
+  Object.keys(MODEL_META).forEach((model) => {
+    if (!availableSet.has(model) && MODEL_META[model]?.discovered) {
+      delete MODEL_META[model];
+    }
+  });
+
+  [RESPONSES_IMAGE_MODELS, CHAT_COMPLETIONS_IMAGE_MODELS, GEMINI_IMAGE_MODELS].forEach((set) => {
+    Array.from(set).forEach((model) => {
+      if (!availableSet.has(model)) set.delete(model);
+    });
+  });
+}
+
 async function refreshAvailableImageModels() {
   const key = getApiKeyValue();
 
@@ -1653,6 +1698,8 @@ async function refreshAvailableImageModels() {
     apiKey?.focus();
     return;
   }
+
+  syncDisplayedModelsForCurrentKey();
 
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
   const url = `${baseURL}/v1/models`;
@@ -1685,6 +1732,8 @@ async function refreshAvailableImageModels() {
 
     const modelNames = extractModelNamesFromModelsResponse(raw);
     const registered = registerAvailableImageModels(modelNames);
+    pruneImageModels(registered.models);
+    displayedModelsApiKey = key;
 
     showDebug({
       request_url: url,
@@ -1694,13 +1743,18 @@ async function refreshAvailableImageModels() {
     });
 
     if (!registered.total) {
+      setModel("");
       const message = "没有从当前 API Key 的模型列表中识别到绘图模型。";
       finishModelRefreshIndicator("warning", message, "未识别到可用模型。");
       return;
     }
 
-    const activeFamily = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL);
-    applyModelFamilyUi(activeFamily, modelSelect?.value || DEFAULT_IMAGE_MODEL);
+    const currentModel = normalizeModelName(modelSelect?.value || "");
+    const nextModel = registered.models.includes(currentModel)
+      ? currentModel
+      : registered.models[0];
+
+    setModel(nextModel);
 
     const message = `已刷新 ${registered.total} 个可用绘图模型。`;
     finishModelRefreshIndicator("success", message, "模型刷新完成。");
@@ -1763,6 +1817,7 @@ function extractModelNamesFromModelsResponse(raw) {
 function registerAvailableImageModels(modelNames) {
   const byFamily = {};
   const models = [];
+  AVAILABLE_IMAGE_MODELS.clear();
 
   modelNames.forEach((model) => {
     model = normalizeModelName(model);
@@ -1772,6 +1827,8 @@ function registerAvailableImageModels(modelNames) {
     const family = inferImageFamilyFromModelName(model);
 
     if (!family) return;
+
+    AVAILABLE_IMAGE_MODELS.add(model);
 
     registerAvailableImageModel({
       model,
@@ -2017,6 +2074,7 @@ function registerCustomImageModel({ model, family, apiType, persist = false }) {
 function ensureCustomModelCard(model, family, apiType) {
   const cards = document.querySelector(".cards");
   if (!cards) return;
+  if (!AVAILABLE_IMAGE_MODELS.has(normalizeModelName(model))) return;
   if (HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) return;
 
   const meta = MODEL_META[model] || {};
@@ -2031,7 +2089,7 @@ function ensureCustomModelCard(model, family, apiType) {
     existingCard.dataset.apiType = apiType;
     existingCard.dataset.customModel = meta.custom ? "true" : "";
     existingCard.dataset.discoveredModel = isDiscovered ? "true" : "";
-    existingCard.hidden = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL) !== family;
+    existingCard.hidden = getModelFamily(modelSelect?.value || "") !== family;
 
     const title = existingCard.querySelector("strong");
     if (title) {
@@ -2056,7 +2114,7 @@ function ensureCustomModelCard(model, family, apiType) {
   card.dataset.apiType = apiType;
   card.dataset.customModel = meta.custom ? "true" : "";
   card.dataset.discoveredModel = isDiscovered ? "true" : "";
-  card.hidden = getModelFamily(modelSelect?.value || DEFAULT_IMAGE_MODEL) !== family;
+  card.hidden = getModelFamily(modelSelect?.value || "") !== family;
 
   const title = document.createElement("strong");
   title.textContent = model;
@@ -2106,7 +2164,7 @@ function hideImageModel(model) {
 
   HIDDEN_IMAGE_MODELS.add(model);
   saveHiddenImageModels();
-  const wasActive = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL) === model;
+  const wasActive = normalizeModelName(modelSelect?.value || "") === model;
 
   $$("[data-model]").forEach((element) => {
     if (normalizeModelName(element.dataset.model) === model) {
@@ -2133,10 +2191,10 @@ function hideImageModel(model) {
   GEMINI_IMAGE_MODELS.delete(model);
 
   const family = meta?.family || "gpt";
-  const activeModel = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
+  const activeModel = normalizeModelName(modelSelect?.value || "");
 
   if (wasActive) {
-    setModel(findFirstModelInFamily(family) || findFirstVisibleModel() || DEFAULT_IMAGE_MODEL);
+    setModel(findFirstModelInFamily(family) || findFirstVisibleModel());
   } else {
     applyModelFamilyUi(family, activeModel);
   }
@@ -2223,14 +2281,8 @@ function getModelSortRank(model, family) {
   model = normalizeModelName(model);
 
   if (family === "gpt") {
-    const preferredGptImageRank = ["gpt-image-2-flatfee", "gpt-image-2"].indexOf(model);
-    if (preferredGptImageRank >= 0) return preferredGptImageRank;
-
-    const gpt5Rank = GPT5_IMAGE_MODEL_ORDER.indexOf(model);
-    if (gpt5Rank >= 0) return 100 + gpt5Rank;
-
-    const gptImageRank = ["gpt-image-1", "dall-e-3"].indexOf(model);
-    if (gptImageRank >= 0) return 200 + gptImageRank;
+    if (model.includes("image") || model.includes("dall")) return 100;
+    if (isGpt5ImageCandidate(model)) return 200;
   }
 
   return 1000;
@@ -2323,7 +2375,13 @@ function canUseImageEditApi(model) {
 function shouldShowModelForCurrentMode(model) {
   model = normalizeModelName(model);
 
-  if (!model || HIDDEN_IMAGE_MODELS.has(model) || isImageEditOnlyModel(model)) {
+  if (
+    !model ||
+    !MODEL_META[model] ||
+    !AVAILABLE_IMAGE_MODELS.has(model) ||
+    HIDDEN_IMAGE_MODELS.has(model) ||
+    isImageEditOnlyModel(model)
+  ) {
     return false;
   }
 
@@ -2365,7 +2423,19 @@ function setModel(model) {
 
   if (!model || !shouldShowModelForCurrentMode(model) || !MODEL_META[model]) {
     const family = model ? getModelFamily(model) : "gpt";
-    model = findFirstModelInFamily(family) || findFirstVisibleModel() || DEFAULT_IMAGE_MODEL;
+    model = findFirstModelInFamily(family) || findFirstVisibleModel();
+  }
+
+  if (!model) {
+    if (modelSelect) {
+      modelSelect.value = "";
+    }
+
+    $$(".model-card").forEach((card) => card.classList.remove("active"));
+    applyModelFamilyUi("gpt", "");
+    updateEmptyPreviewState("");
+    updateApiInfo();
+    return;
   }
 
   ensureModelOption(model);
@@ -2390,7 +2460,7 @@ function setModel(model) {
 function getSelectedImageModel() {
   const selectModel = normalizeModelName(modelSelect?.value || "");
 
-  if (selectModel && shouldShowModelForCurrentMode(selectModel)) {
+  if (selectModel && MODEL_META[selectModel] && shouldShowModelForCurrentMode(selectModel)) {
     return selectModel;
   }
 
@@ -2398,7 +2468,7 @@ function getSelectedImageModel() {
     document.querySelector(".model-card.active:not([hidden])")?.dataset.model || ""
   );
 
-  if (activeCardModel && shouldShowModelForCurrentMode(activeCardModel)) {
+  if (activeCardModel && MODEL_META[activeCardModel] && shouldShowModelForCurrentMode(activeCardModel)) {
     if (modelSelect) modelSelect.value = activeCardModel;
     return activeCardModel;
   }
@@ -2448,7 +2518,7 @@ function updateApiInfo() {
   const model = getSelectedImageModel();
 
   if (heroShowcaseModel) {
-    heroShowcaseModel.textContent = model || DEFAULT_IMAGE_MODEL;
+    heroShowcaseModel.textContent = model || "等待刷新";
   }
 
   if (apiModeBadge) {
@@ -2456,11 +2526,13 @@ function updateApiInfo() {
   }
 
   if (apiInfoTitle) {
-    apiInfoTitle.textContent = `当前使用 ${model}`;
+    apiInfoTitle.textContent = model ? `当前使用 ${model}` : "请先刷新可用模型";
   }
 
   if (apiInfoDesc) {
-    apiInfoDesc.textContent = `真实 API 模式会调用 ${getEndpointForModel(model)}。`;
+    apiInfoDesc.textContent = model
+      ? `真实 API 模式会调用 ${getEndpointForModel(model)}。`
+      : "刷新模型后，仅显示当前 API Key 返回的可用模型。";
   }
 }
 
@@ -2578,7 +2650,7 @@ async function handleGenerate(event) {
   lockProviderSettings();
 
   const prompt = promptInput?.value.trim() || "";
-  const model = normalizeModelName(modelSelect?.value || DEFAULT_IMAGE_MODEL);
+  const model = getSelectedImageModel();
   const imageMode = getCurrentImageMode();
   const isEditMode = imageMode === "edit";
 
@@ -2620,6 +2692,12 @@ async function handleGenerate(event) {
   if (!key) {
     setStatus("请填写 API Key。", "warning");
     apiKey?.focus();
+    return;
+  }
+
+  if (!model) {
+    setStatus("请先刷新并选择当前 API Key 可用的绘图模型。", "warning");
+    modelSyncText?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 
@@ -3826,7 +3904,7 @@ async function handleVideoGenerate(event) {
 
   const key = getApiKeyValue();
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const model = videoModelInput?.value.trim() || "";
+  const model = getSelectedToolModel("video");
   const prompt = videoPromptInput?.value.trim() || "";
   const size = videoSizeSelect?.value || "1280x720";
   const seconds = Number(videoSecondsInput?.value || 5);
@@ -4015,13 +4093,19 @@ async function handleTranscription(event) {
 
   const key = getApiKeyValue();
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const model = transcriptionModelInput?.value.trim() || "whisper-1";
+  const model = getSelectedToolModel("transcription");
   const file = audioFileInput?.files?.[0] || null;
   const prompt = transcriptionPromptInput?.value.trim() || "";
 
   if (!key) {
     setToolStatus(transcriptionStatusText, "请先填入个人 API Key。", "warning");
     apiKey?.focus();
+    return;
+  }
+
+  if (!model) {
+    setToolStatus(transcriptionStatusText, "请先刷新并选择当前 API Key 可用的转写模型。", "warning");
+    transcriptionModelSyncText?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 
@@ -4131,13 +4215,19 @@ async function handleTextToSpeech(event) {
 
   const key = getApiKeyValue();
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const model = ttsModelInput?.value.trim() || "tts-1";
+  const model = getSelectedToolModel("tts");
   const voice = ttsVoiceInput?.value.trim() || "alloy";
   const input = ttsTextInput?.value.trim() || "";
 
   if (!key) {
     setToolStatus(ttsStatusText, "请先填入个人 API Key。", "warning");
     apiKey?.focus();
+    return;
+  }
+
+  if (!model) {
+    setToolStatus(ttsStatusText, "请先刷新并选择当前 API Key 可用的文字转语音模型。", "warning");
+    ttsModelSyncText?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 
@@ -4246,12 +4336,18 @@ async function startRealtimeVoice() {
 
   const key = getApiKeyValue();
   const baseURL = normalizeBaseUrl(FIXED_API_BASE);
-  const model = realtimeModelInput?.value.trim() || "gpt-realtime";
+  const model = getSelectedToolModel("realtime");
   const instructions = realtimeInstructionsInput?.value.trim() || "";
 
   if (!key) {
     setToolStatus(realtimeStatusText, "请先填入个人 API Key。", "warning");
     apiKey?.focus();
+    return;
+  }
+
+  if (!model) {
+    setToolStatus(realtimeStatusText, "请先刷新并选择当前 API Key 可用的实时语音模型。", "warning");
+    realtimeModelSyncText?.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 
@@ -4852,14 +4948,16 @@ function reloadHistoryEntry(id) {
 
   if (category === "image") {
     switchTool("image");
-    setModel(item.model || DEFAULT_IMAGE_MODEL);
+    if (item.model && AVAILABLE_IMAGE_MODELS.has(normalizeModelName(item.model))) {
+      setModel(item.model);
+    }
     if (promptInput) promptInput.value = item.prompt || "";
     return;
   }
 
   if (category === "video") {
     switchTool("video");
-    if (item.model) {
+    if (item.model && isAvailableToolModel("video", item.model)) {
       ensureToolModelCard("video", item.model);
       setToolModel("video", item.model);
     }
@@ -4870,12 +4968,16 @@ function reloadHistoryEntry(id) {
   if (category === "audio") {
     if (String(item.type || "").includes("转写")) {
       switchTool("transcription");
-      ensureToolModelCard("transcription", item.model || "whisper-1");
-      setToolModel("transcription", item.model || "whisper-1");
+      if (item.model && isAvailableToolModel("transcription", item.model)) {
+        ensureToolModelCard("transcription", item.model);
+        setToolModel("transcription", item.model);
+      }
     } else {
       switchTool("tts");
-      ensureToolModelCard("tts", item.model || "tts-1");
-      setToolModel("tts", item.model || "tts-1");
+      if (item.model && isAvailableToolModel("tts", item.model)) {
+        ensureToolModelCard("tts", item.model);
+        setToolModel("tts", item.model);
+      }
       if (ttsTextInput) ttsTextInput.value = item.prompt || "";
     }
   }
