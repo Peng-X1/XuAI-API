@@ -4278,6 +4278,41 @@ textarea:focus {
   background: rgba(255, 247, 237, 0.74) !important;
 }
 
+.history-filters,
+.history-list > .empty-text {
+  border-color: rgba(154, 52, 18, 0.1) !important;
+  background: rgba(255, 255, 255, 0.56) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+.history-filters button {
+  color: #9a3412 !important;
+  border-color: rgba(249, 115, 22, 0.16) !important;
+  background: rgba(255, 247, 237, 0.7) !important;
+  box-shadow: none !important;
+}
+
+.history-filters button:hover {
+  color: #7c2d12 !important;
+  border-color: rgba(249, 115, 22, 0.28) !important;
+  background: rgba(255, 237, 213, 0.82) !important;
+}
+
+.history-filters button.active {
+  color: #0f766e !important;
+  border-color: rgba(20, 184, 166, 0.3) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 247, 237, 0.86), rgba(204, 251, 241, 0.74)) !important;
+  box-shadow: 0 12px 26px rgba(20, 184, 166, 0.08) !important;
+}
+
+.history-danger-btn {
+  color: #b91c1c !important;
+  border: 1px solid rgba(239, 68, 68, 0.16) !important;
+  background: rgba(254, 242, 242, 0.8) !important;
+}
+
 /* Model vendor picker: individual cards instead of a slider-like strip. */
 .control-panel .model-tabs {
   display: grid !important;
