@@ -1987,12 +1987,12 @@ textarea {
 
 .tool-model-card {
   position: relative;
-  min-height: 112px;
+  min-height: 76px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: rgba(22, 34, 53, 0.65);
   color: var(--text);
-  padding: 20px 54px 20px 20px;
+  padding: 12px 42px 12px 14px;
   text-align: left;
   transition: 0.18s ease;
 }
@@ -2084,11 +2084,16 @@ textarea {
 }
 
 .tool-model-card strong {
-  display: block;
-  font-size: 20px;
-  line-height: 1.25;
-  margin-bottom: 14px;
+  display: -webkit-box;
+  min-height: 0;
+  margin-bottom: 6px;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+  line-height: 1.28;
+  font-weight: 820;
 }
 
 .tool-model-card span {
@@ -2098,9 +2103,12 @@ textarea {
   border-radius: 999px;
   color: var(--primary-2);
   background: rgba(25, 183, 255, 0.09);
-  padding: 5px 10px;
-  font-size: 13px;
-  font-weight: 700;
+  min-height: 24px;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 800;
 }
 
 .tool-model-card.active {
@@ -2673,6 +2681,24 @@ textarea {
   }
 
   .model-picker-row .model-card span {
+    min-height: 20px !important;
+    padding: 2px 7px !important;
+    font-size: 10px !important;
+  }
+
+  .tool-model-card {
+    min-height: 58px !important;
+    padding: 9px 34px 9px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .tool-model-card strong {
+    margin-bottom: 3px !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  .tool-model-card span {
     min-height: 20px !important;
     padding: 2px 7px !important;
     font-size: 10px !important;
