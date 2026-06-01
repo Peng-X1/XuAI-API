@@ -2234,6 +2234,10 @@ textarea {
   flex-wrap: wrap;
 }
 
+.history-filters .history-danger-btn {
+  margin-left: auto;
+}
+
 .history-filters button {
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 999px;
@@ -4311,6 +4315,10 @@ textarea:focus {
   color: #b91c1c !important;
   border: 1px solid rgba(239, 68, 68, 0.16) !important;
   background: rgba(254, 242, 242, 0.8) !important;
+}
+
+.history-filters .history-danger-btn {
+  margin-left: auto !important;
 }
 
 /* Model vendor picker: individual cards instead of a slider-like strip. */
