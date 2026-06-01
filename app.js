@@ -670,6 +670,25 @@ function syncToolHeader(tool) {
     heroDesc.textContent = meta.desc;
   }
 
+  updateHeroShowcaseModel();
+}
+
+function getCurrentHeroShowcaseModel() {
+  if (activeTool === "image") {
+    return getSelectedImageModel();
+  }
+
+  if (AVAILABLE_TOOL_MODELS[activeTool]) {
+    return getSelectedToolModel(activeTool);
+  }
+
+  return "";
+}
+
+function updateHeroShowcaseModel() {
+  if (!heroShowcaseModel) return;
+
+  heroShowcaseModel.textContent = getCurrentHeroShowcaseModel() || "等待刷新";
 }
 
 function getCurrentImageMode() {
@@ -996,6 +1015,7 @@ function setToolModel(tool, model) {
     config.cards?.querySelectorAll(".tool-model-card").forEach((card) => {
       card.classList.remove("active");
     });
+    updateHeroShowcaseModel();
     return;
   }
 
@@ -1013,6 +1033,8 @@ function setToolModel(tool, model) {
       normalizeModelName(card.dataset.toolModel) === model
     );
   });
+
+  updateHeroShowcaseModel();
 }
 
 function syncToolModelCloseButton(card) {
@@ -2517,9 +2539,7 @@ function getEndpointForModel(model) {
 function updateApiInfo() {
   const model = getSelectedImageModel();
 
-  if (heroShowcaseModel) {
-    heroShowcaseModel.textContent = model || "等待刷新";
-  }
+  updateHeroShowcaseModel();
 
   if (apiModeBadge) {
     apiModeBadge.textContent = "真实 API";
