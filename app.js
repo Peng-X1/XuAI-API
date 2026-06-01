@@ -395,9 +395,10 @@ function initParticleField() {
   const makeParticle = () => ({
     x: Math.random() * width,
     y: Math.random() * height,
-    vx: (Math.random() - 0.5) * 0.28,
-    vy: (Math.random() - 0.5) * 0.28,
-    size: 1 + Math.random() * 1.8,
+    vx: (Math.random() - 0.5) * 0.32,
+    vy: (Math.random() - 0.5) * 0.32,
+    size: 1.1 + Math.random() * 1.9,
+    hue: Math.random(),
   });
 
   const resize = () => {
@@ -410,18 +411,33 @@ function initParticleField() {
     particleCanvas.style.height = `${height}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const targetCount = Math.max(36, Math.min(72, Math.round((width * height) / 22000)));
+    const targetCount = Math.max(42, Math.min(88, Math.round((width * height) / 19000)));
     while (particles.length < targetCount) particles.push(makeParticle());
     particles.length = targetCount;
+  };
+
+  const drawParticle = (particle) => {
+    const isLight = document.body.classList.contains("light");
+    const alpha = isLight ? 0.42 : 0.68;
+    const color =
+      particle.hue < 0.42
+        ? `rgba(102, 228, 255, ${alpha})`
+        : particle.hue < 0.72
+          ? `rgba(167, 139, 250, ${alpha})`
+          : `rgba(99, 230, 190, ${alpha})`;
+
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
   };
 
   const draw = () => {
     ctx.clearRect(0, 0, width, height);
 
     const isLight = document.body.classList.contains("light");
-    const dotColor = isLight ? "rgba(25, 183, 255, 0.42)" : "rgba(101, 232, 255, 0.58)";
-    const lineColor = isLight ? "rgba(25, 183, 255, " : "rgba(101, 232, 255, ";
-    const linkDistance = width < 760 ? 92 : 126;
+    const lineColor = isLight ? "rgba(25, 183, 255, " : "rgba(174, 210, 255, ";
+    const linkDistance = width < 760 ? 96 : 138;
 
     for (let i = 0; i < particles.length; i += 1) {
       const particle = particles[i];
@@ -440,10 +456,10 @@ function initParticleField() {
           const dy = particle.y - pointer.y;
           const distance = Math.hypot(dx, dy) || 1;
 
-          if (distance < 150) {
-            const force = (150 - distance) / 150;
-            particle.x += (dx / distance) * force;
-            particle.y += (dy / distance) * force;
+          if (distance < 170) {
+            const force = (170 - distance) / 170;
+            particle.x += (dx / distance) * force * 1.25;
+            particle.y += (dy / distance) * force * 1.25;
           }
         }
       }
@@ -456,16 +472,21 @@ function initParticleField() {
           ctx.beginPath();
           ctx.moveTo(particle.x, particle.y);
           ctx.lineTo(next.x, next.y);
-          ctx.strokeStyle = `${lineColor}${0.12 * (1 - distance / linkDistance)})`;
+          ctx.strokeStyle = `${lineColor}${0.15 * (1 - distance / linkDistance)})`;
           ctx.lineWidth = 1;
           ctx.stroke();
         }
       }
 
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx.fillStyle = dotColor;
-      ctx.fill();
+      drawParticle(particle);
+    }
+
+    if (pointer.active) {
+      const gradient = ctx.createRadialGradient(pointer.x, pointer.y, 0, pointer.x, pointer.y, 210);
+      gradient.addColorStop(0, isLight ? "rgba(25, 183, 255, 0.12)" : "rgba(102, 228, 255, 0.18)");
+      gradient.addColorStop(1, "rgba(102, 228, 255, 0)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(pointer.x - 210, pointer.y - 210, 420, 420);
     }
 
     if (!reduceMotion) frameId = window.requestAnimationFrame(draw);
