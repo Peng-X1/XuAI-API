@@ -4261,6 +4261,23 @@ textarea:focus {
   background: rgba(255, 247, 237, 0.74) !important;
 }
 
+.tool-api-key-row {
+  border-color: rgba(154, 52, 18, 0.1) !important;
+  background: rgba(255, 255, 255, 0.56) !important;
+  box-shadow: none !important;
+}
+
+.tool-api-key-row [data-shared-api-key] {
+  background: rgba(255, 255, 255, 0.68) !important;
+}
+
+.tool-api-key-row [data-refresh-tool-models],
+.tool-api-key-row [data-shared-api-key-toggle] {
+  color: #9a3412 !important;
+  border-color: rgba(249, 115, 22, 0.16) !important;
+  background: rgba(255, 247, 237, 0.74) !important;
+}
+
 /* Model vendor picker: individual cards instead of a slider-like strip. */
 .control-panel .model-tabs {
   display: grid !important;
