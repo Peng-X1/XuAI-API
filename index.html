@@ -78,7 +78,7 @@
             </div>
             <div class="showcase-console__line">
               <b>model</b>
-              <span>gpt-image-2</span>
+              <span id="heroShowcaseModel">gpt-image-2</span>
             </div>
             <div class="showcase-console__meter">
               <i></i>
@@ -380,10 +380,15 @@
             </div>
 
             <div class="field-row prompt-row form-row-horizontal">
-              <label for="prompt">提示词 Prompt</label>
+              <label for="prompt" class="required-label">
+                <span>提示词 Prompt</span>
+                <span class="required-pill">必填</span>
+              </label>
               <textarea
                 id="prompt"
                 rows="6"
+                required
+                aria-required="true"
                 placeholder="例如：一只戴着宇航头盔的橘猫，坐在未来城市屋顶，电影感灯光，超清细节"
               ></textarea>
             </div>

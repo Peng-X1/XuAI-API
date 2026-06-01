@@ -198,6 +198,7 @@ const toolPanels = $$("[data-tool-panel]");
 const hero = $(".hero");
 const heroTitle = $(".hero h2");
 const heroTitleText = $(".hero [data-hero-title]");
+const heroShowcaseModel = $("#heroShowcaseModel");
 const heroIcon = $(".hero .hero-icon");
 const heroDesc = $(".hero p");
 const heroActions = $(".hero-actions");
@@ -2449,6 +2450,10 @@ function getEndpointForModel(model) {
 
 function updateApiInfo() {
   const model = getSelectedImageModel();
+
+  if (heroShowcaseModel) {
+    heroShowcaseModel.textContent = model || DEFAULT_IMAGE_MODEL;
+  }
 
   if (apiModeBadge) {
     apiModeBadge.textContent = "真实 API";

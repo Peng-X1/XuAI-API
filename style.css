@@ -4871,185 +4871,28 @@ textarea:focus {
   }
 }
 
-/* Softer typography: warmer product UI, less "AI template" weight. */
-:root {
-  --font-ui: "HarmonyOS Sans SC", "MiSans", "Alibaba PuHuiTi 3.0", "Alibaba PuHuiTi",
-    "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
-  --font-latin: "Aptos", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+/* Required field markers. */
+.required-label {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
 }
 
-html,
-body,
-button,
-input,
-select,
-textarea {
-  font-family: var(--font-ui) !important;
-  font-synthesis-weight: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.required-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: 999px;
+  color: #b91c1c;
+  background: rgba(254, 242, 242, 0.82);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.brand h1,
-.hero h2,
-.preview-head h3,
-.empty-state h4 {
-  font-family: var(--font-ui) !important;
-  font-weight: 680 !important;
-  letter-spacing: 0 !important;
-}
-
-.brand h1 {
-  font-size: 23px !important;
-}
-
-.brand p,
-.hero-kicker,
-.hero-chips span,
-.model-tabs-value,
-.model-sync-text,
-.api-base-note,
-.hint,
-.badge,
-.empty-badge {
-  font-weight: 520 !important;
-}
-
-.hero h2 {
-  font-weight: 660 !important;
-}
-
-.hero p,
-.preview-head p,
-.generation-notice__content p,
-.empty-state p {
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-.control-panel .model-tabs-label,
-.field-row > label,
-.model-picker-row > label,
-.model-select-row > label,
-.prompt-row > label {
-  color: #1f2937 !important;
-  font-size: 15px !important;
-  font-weight: 620 !important;
-  letter-spacing: 0 !important;
-}
-
-.control-panel .model-tabs button {
-  font-family: var(--font-ui) !important;
-  font-size: 14px !important;
-  font-weight: 520 !important;
-  letter-spacing: 0 !important;
-  white-space: nowrap !important;
-  word-break: keep-all !important;
-}
-
-.control-panel .model-tabs button.active {
-  font-weight: 600 !important;
-}
-
-input,
-select,
-textarea {
-  font-size: 15px !important;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-}
-
-.api-base-wrap #apiBase,
-.key-wrap input {
-  font-family: var(--font-latin), var(--font-ui) !important;
-  font-size: 15px !important;
-  font-weight: 400 !important;
-}
-
-.api-key-row #toggleKeyBtn,
-.api-key-row #refreshModelsBtn,
-.key-wrap button,
-.secondary-btn,
-.primary-btn {
-  font-weight: 610 !important;
-  letter-spacing: 0 !important;
-}
-
-.primary-btn {
-  font-size: 16px !important;
-}
-
-.radio,
-.checkbox,
-.radio span,
-.checkbox span {
-  font-size: 15px !important;
-  font-weight: 520 !important;
-  color: #1f2937 !important;
-}
-
-.model-picker-row .model-card,
-.tool-model-card {
-  font-family: var(--font-ui) !important;
-}
-
-.model-picker-row .model-card strong,
-.tool-model-card strong {
-  color: #1f2937 !important;
-  font-size: 17px !important;
-  font-weight: 600 !important;
-  line-height: 1.35 !important;
-  letter-spacing: 0 !important;
-}
-
-.model-picker-row .model-card span,
-.tool-model-card span {
-  color: #0f766e !important;
-  font-size: 12px !important;
-  font-weight: 560 !important;
-  letter-spacing: 0 !important;
-}
-
-.model-card__close,
-.tool-model-card__close {
-  font-weight: 600 !important;
-}
-
-.preview-head h3 {
-  font-size: 25px !important;
-  font-weight: 660 !important;
-}
-
-.preview-head .status-badge,
-#modelBadge.badge,
-.generation-notice__meta span {
-  font-weight: 560 !important;
-  letter-spacing: 0 !important;
-}
-
-.generation-notice__top strong {
-  font-size: 17px !important;
-  font-weight: 620 !important;
-  letter-spacing: 0 !important;
-}
-
-.generation-notice__icon {
-  font-family: var(--font-latin), var(--font-ui) !important;
-  font-weight: 760 !important;
-}
-
-@media (max-width: 920px) {
-  .brand h1 {
-    font-size: 22px !important;
-  }
-
-  .control-panel .model-tabs button {
-    font-size: 14px !important;
-  }
-
-  .model-picker-row .model-card strong,
-  .tool-model-card strong {
-    font-size: 16px !important;
-  }
+.prompt-row textarea:required {
+  scroll-margin-top: 120px;
 }
