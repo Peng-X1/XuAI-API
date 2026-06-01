@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
+  <canvas id="particleCanvas" class="particle-canvas" aria-hidden="true"></canvas>
+  <div class="ambient-grid" aria-hidden="true"></div>
+
   <div class="app">
     <header class="topbar">
       <div class="brand">
@@ -42,12 +45,45 @@
 
     <main class="main">
       <section class="hero">
-        <div>
+        <div class="hero-copy">
+          <span class="hero-kicker">XuAI Creative API</span>
           <h2>
             <span class="hero-icon" aria-hidden="true"></span>
             <span data-hero-title>图片生成</span>
           </h2>
           <p>使用 AI 模型生成高质量图片</p>
+          <div class="hero-chips" aria-label="核心能力">
+            <span>Image</span>
+            <span>Video</span>
+            <span>Speech</span>
+            <span>Realtime</span>
+          </div>
+        </div>
+
+        <div class="hero-showcase" aria-hidden="true">
+          <div class="showcase-orbit">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="showcase-console">
+            <div class="showcase-console__bar">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="showcase-console__line">
+              <b>endpoint</b>
+              <span>api.xuai.chat/v1</span>
+            </div>
+            <div class="showcase-console__line">
+              <b>model</b>
+              <span>gpt-image-2</span>
+            </div>
+            <div class="showcase-console__meter">
+              <i></i>
+            </div>
+          </div>
         </div>
 
         <div class="hero-actions" hidden>
